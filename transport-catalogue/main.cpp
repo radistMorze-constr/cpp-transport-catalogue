@@ -1,4 +1,4 @@
-// место для вашего кода#include "transport_catalogue.h"
+#include "transport_catalogue.h"
 #include "input_reader.h"
 #include "stat_reader.h"
 //#include "tests.h"
@@ -8,17 +8,20 @@
 #include <fstream>
 
 using namespace transport_catalogue;
+using namespace stat_reader;
+using namespace reader_ifo;
+using namespace geo;
 
 int main() {
     //TestTransportCatalogue();
 
     TransportCatalogue tran_cat;
 
-    std::istream& thread_i = std::cin;
-    //std::fstream thread_i("tsC_case1_input.txt"s);
-    std::ostream& thread_o = std::cout;
+    std::istream& stream_input = std::cin;
+    //std::fstream stream_input("tsC_case1_input.txt"s);
+    std::ostream& stream_output = std::cout;
 
-    reader_ifo::ReadInput(tran_cat, thread_i);
-    std::vector<Request> name_requests = reader_requests::ReadRequests(thread_i);
-    output_request::OutputInfo(name_requests, tran_cat, thread_o);
+    ReadInput(tran_cat, stream_input);
+    std::vector<Request> name_requests = ReadRequests(stream_input);
+    OutputInfo(name_requests, tran_cat, stream_output);
 }

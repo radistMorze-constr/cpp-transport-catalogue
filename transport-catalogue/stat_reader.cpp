@@ -3,12 +3,11 @@
 
 namespace transport_catalogue {
 using namespace std::literals;
-
-namespace detail {
+namespace stat_reader {
 void OutputStopInfo(Request stop, TransportCatalogue& tran_cat, std::ostream& thread) {
-    thread << "Stop "s << stop.request_ << ": "s;
+    thread << "Stop "s << stop.request << ": "s;
     try {
-        auto busses = tran_cat.GetListBusses(stop.request_);
+        auto busses = tran_cat.GetListBusses(stop.request);
         thread << "buses";
         for (const auto& bus : busses) {
             thread << " "s << bus;
@@ -21,18 +20,16 @@ void OutputStopInfo(Request stop, TransportCatalogue& tran_cat, std::ostream& th
 }
 
 void OutputBusInfo(Request bus, TransportCatalogue& tran_cat, std::ostream& thread) {
-    auto bus_info = tran_cat.GetInfromBus(bus.request_);
-    if (bus_info.not_found_) {
-        thread << "Bus "s << bus.request_ << ": not found"s << std::endl;
+    auto bus_info = tran_cat.GetInfromBus(bus.request);
+    if (bus_info.not_found) {
+        thread << "Bus "s << bus.request << ": not found"s << std::endl;
         return;
     }
     thread << std::setprecision(6);
-    thread << "Bus "s << bus.request_ << ": "s << bus_info.amount_stops_ << " stops on route, "s << bus_info.amount_unique_stops_;
-    thread << " unique stops, "s << bus_info.length_ << " route length, "s << bus_info.curvature_ << " curvature"s << std::endl;
-}
+    thread << "Bus "s << bus.request << ": "s << bus_info.amount_stops << " stops on route, "s << bus_info.amount_unique_stops;
+    thread << " unique stops, "s << bus_info.length << " route length, "s << bus_info.curvature << " curvature"s << std::endl;
 }
 
-namespace reader_requests {
 std::vector<Request> ReadRequests(std::istream& thread) {
     TypeRequest type;
     std::string in;
@@ -59,16 +56,14 @@ std::vector<Request> ReadRequests(std::istream& thread) {
     }
     return result;
 }
-}
 
-namespace output_request {
 void OutputInfo(std::vector<Request> name_requests, TransportCatalogue& tran_cat, std::ostream& thread) {
     for (const auto& request : name_requests) {
-        if (request.type_ == TypeRequest::bus) {
-            detail::OutputBusInfo(request, tran_cat, thread);
+        if (request.type == TypeRequest::bus) {
+            OutputBusInfo(request, tran_cat, thread);
         }
         else {
-            detail::OutputStopInfo(request, tran_cat, thread);
+            OutputStopInfo(request, tran_cat, thread);
         }
     }
 }

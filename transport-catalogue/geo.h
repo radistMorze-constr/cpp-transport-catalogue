@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cmath>
+#include <iostream>
+
+using namespace std::literals;
 
 namespace geo {
 struct Coordinates {
@@ -13,6 +16,10 @@ struct Coordinates {
         return !(*this == other);
     }
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Coordinates& coordinates) {
+    return os << coordinates.lat << ", "s << coordinates.lng;
+}
 
 inline double ComputeDistance(Coordinates from, Coordinates to) {
     using namespace std;

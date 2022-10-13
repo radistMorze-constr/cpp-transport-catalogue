@@ -12,7 +12,7 @@
 namespace transport_catalogue {
 using namespace std::literals;
 
-namespace detail {
+namespace reader_ifo {
 void CutSpaces(std::string& line) {
     auto first_char = line.find_first_not_of(' ');
     if (first_char == std::string::npos) {
@@ -77,13 +77,11 @@ Bus HandleBus(std::string&& str, TransportCatalogue& tran_cat) {
     while (std::getline(ss_str, stopname, delimiter)) {
         CutSpaces(stopname);
         stops.push_back(tran_cat.FindStop(stopname));
-        unique_stops.insert(stops.back()->name_);
+        unique_stops.insert(stops.back()->name);
     }
     return { std::move(busname), std::move(stops), std::move(type_route), std::move(unique_stops) };
 }
-}
 
-namespace reader_ifo {
 void ReadInput(TransportCatalogue& tran_cat, std::istream& thread) {
     std::string in;
     getline(thread, in);
@@ -96,10 +94,10 @@ void ReadInput(TransportCatalogue& tran_cat, std::istream& thread) {
         getline(thread, in);
         auto key_word = in.substr(0, in.find_first_of(' '));
         if (key_word == "Stop"sv) {
-            Stop stop = detail::HandleStop(in);
-            std::string name = stop.name_;
+            Stop stop = HandleStop(in);
+            std::string name = stop.name;
             tran_cat.AddStop(std::move(stop));
-            stop_to_lengths_to_stops[tran_cat.FindStop(name)] = detail::HandleLengthsToStops(in);
+            stop_to_lengths_to_stops[tran_cat.FindStop(name)] = HandleLengthsToStops(in);
         }
         else if (key_word == "Bus"sv) {
             bus_info_strings.push_back(std::move(in));
@@ -114,7 +112,7 @@ void ReadInput(TransportCatalogue& tran_cat, std::istream& thread) {
     }
 
     for (auto& str : bus_info_strings) {
-        tran_cat.AddBus(detail::HandleBus(std::move(str), tran_cat));
+        tran_cat.AddBus(HandleBus(std::move(str), tran_cat));
     }
 }
 }
