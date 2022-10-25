@@ -1,6 +1,5 @@
 #include "transport_catalogue.h"
-#include "input_reader.h"
-#include "stat_reader.h"
+#include "json_reader.h"
 //#include "tests.h"
 
 #include <iostream>
@@ -8,20 +7,19 @@
 #include <fstream>
 
 using namespace transport_catalogue;
-using namespace stat_reader;
-using namespace reader_ifo;
+using namespace handle_iformation;
 using namespace geo;
 
 int main() {
     //TestTransportCatalogue();
 
-    TransportCatalogue tran_cat;
+    //TransportCatalogue tran_cat;
 
     std::istream& stream_input = std::cin;
-    //std::fstream stream_input("tsC_case1_input.txt"s);
+    //std::fstream stream_input("s10_final_opentest_3.json");
     std::ostream& stream_output = std::cout;
 
-    ReadInput(tran_cat, stream_input);
-    std::vector<Request> name_requests = ReadRequests(stream_input);
-    OutputInfo(name_requests, tran_cat, stream_output);
+    Facade facade(stream_input);
+    facade.AsnwerRequests(stream_output);
+    //facade.RenderRoute(stream_output);
 }

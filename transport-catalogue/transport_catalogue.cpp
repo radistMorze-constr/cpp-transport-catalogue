@@ -20,14 +20,6 @@ struct LengthToStop {
 	double geo_length_;
 };
 
-Bus::Bus(std::string&& name, std::vector<const Stop*>&& stops, TypeRoute&& type_route, std::unordered_set<std::string_view>&& unique_stops) :
-	name(std::move(name)),
-	stops(std::move(stops)),
-	type_route(std::move(type_route)),
-	unique_stops(std::move(unique_stops))
-{
-}
-
 TransportCatalogue::TransportCatalogue() = default;
 
 void TransportCatalogue::AddBus(Bus&& bus) {
@@ -60,10 +52,10 @@ const Bus* TransportCatalogue::FindBus(std::string_view busname) const {
 	return nullptr;
 }
 
-BusInfo TransportCatalogue::GetInfromBus(std::string_view busname) const {
+std::optional<BusInfo> TransportCatalogue::GetInfromBus(std::string_view busname) const {
 	auto* bus = FindBus(busname);
 	if (bus == nullptr) {
-		return { 0, 0, 0, 0, true };
+		return {};
 	}
 	size_t stops = (bus->type_route == TypeRoute::circle) ? bus->stops.size() : (2 * bus->stops.size() - 1);
 	size_t unique_stops = bus->unique_stops.size();
@@ -90,7 +82,7 @@ BusInfo TransportCatalogue::GetInfromBus(std::string_view busname) const {
 		return LengthToStop(left.real_length_ + right.real_length_, left.geo_length_ + right.geo_length_);
 		});
 	auto curvature = length.real_length_ / length.geo_length_;
-	return { stops, unique_stops, length.real_length_, curvature, false };
+	return { {stops, unique_stops, length.real_length_, curvature} };
 }
 
 std::set<std::string_view> TransportCatalogue::GetListBusses(std::string_view stopname) const {
@@ -98,7 +90,7 @@ std::set<std::string_view> TransportCatalogue::GetListBusses(std::string_view st
 		throw "not found"s;
 	}
 	else if (!stopname_to_busses_.count(FindStop(stopname))) {
-		throw "no buses"s;
+		return {};
 	}
 	return stopname_to_busses_.at(FindStop(stopname));
 }
@@ -117,10 +109,27 @@ double TransportCatalogue::GetLengthInStops(const Stop* left, const Stop* right)
 	}
 }
 
-void TransportCatalogue::SetLengthInStops(const Stop* from, std::unordered_map<std::string, double> stop_length) {
+void TransportCatalogue::SetLengthInStops(const Stop* from, json::Dict stop_length) {
 	for (const auto& [stop, length] : stop_length) {
 		auto key = std::make_pair(from, FindStop(stop));
-		distance_stops_[key] = length;
+		distance_stops_[key] = length.AsDouble();
 	}
 }
+
+const std::map<std::string_view, const Bus*>& TransportCatalogue::GetBusnameToBus() const {
+	return busname_to_bus_;
 }
+
+const std::vector<const Stop*> TransportCatalogue::GetValidStops() const {
+	std::vector<const Stop*> result;
+	for (const auto& [stop, buses] : stopname_to_busses_) {
+		if (buses.size()) {
+			result.push_back(stop);
+		}
+	}
+	std::sort(result.begin(), result.end(), [](const auto& lhs, const auto& rhs) {
+		return lhs->name < rhs->name;
+		});
+	return result;
+}
+} //namespace transport_catalogue
