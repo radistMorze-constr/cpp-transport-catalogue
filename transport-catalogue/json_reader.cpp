@@ -9,6 +9,7 @@ namespace transport_catalogue {
 namespace handle_iformation {
 using namespace std::literals;
 using namespace svg;
+using namespace json;
 
 Color ParseColor(const Node& color_node) {
 	Color color;
@@ -90,12 +91,13 @@ void Facade::InitialiseRenderSettings() {
 		color_palette.push_back(ParseColor(color));
 	}
 
-	map_render_ = rendering::MapRenderer(render_settings.at("width"s).AsDouble(), render_settings.at("height"s).AsDouble(),
+	rendering::RenderSettings settings = { render_settings.at("width"s).AsDouble(), render_settings.at("height"s).AsDouble(),
 		render_settings.at("padding"s).AsDouble(), render_settings.at("line_width"s).AsDouble(),
 		render_settings.at("stop_radius"s).AsDouble(), render_settings.at("bus_label_font_size"s).AsInt(),
 		bus_label_offset, render_settings.at("stop_label_font_size"s).AsInt(),
 		stop_label_offset, underlayer_color,
-		render_settings.at("underlayer_width"s).AsDouble(), color_palette);
+		render_settings.at("underlayer_width"s).AsDouble(), color_palette };
+	map_render_ = rendering::MapRenderer(std::move(settings));
 }
 
 Facade::Facade(std::istream& thread) 
@@ -114,11 +116,11 @@ void Facade::AsnwerRequests(std::ostream& thread) {
 		if (request_as_map.at("type"s).AsString() == "Bus"s) {
 			auto bus_info = tran_cat_.GetInfromBus(request_as_map.at("name"s).AsString());
 			if (!bus_info) {
-				Node node({ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "error_message"s, "not found"s } });
+				Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, {"error_message"s, "not found"s} });
 				result.push_back(std::move(node));
 			}
 			else {
-				Node node({ { "request_id"s, request_as_map.at("id"s).AsInt() },
+				Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() },
 					{ "curvature"s, bus_info->curvature },
 					{ "route_length"s, bus_info->length },
 					{ "stop_count"s, static_cast<int>(bus_info->amount_stops) },
@@ -134,18 +136,18 @@ void Facade::AsnwerRequests(std::ostream& thread) {
 				for (const auto& sv : busses) {
 					names.push_back(std::string(sv));
 				}
-				Node node({ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "buses"s, std::move(names) } });
+				Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "buses"s, std::move(names) } });
 				result.push_back(std::move(node));
 			}
 			catch (std::string error) {
-				Node node({ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "error_message"s, error } });
+				Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "error_message"s, error } });
 				result.push_back(std::move(node));
 			}
 		}
 		else if (request_as_map.at("type"s).AsString() == "Map"s) {
 			std::ostringstream render;
 			RenderRoute(render);
-			Node node({ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "map"s, render.str()}});
+			Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "map"s, render.str()}});
 			result.push_back(std::move(node));
 		}
 		else {

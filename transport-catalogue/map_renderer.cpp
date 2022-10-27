@@ -19,7 +19,7 @@ public:
     template <typename PointInputIt>
     SphereProjector(PointInputIt points_begin, PointInputIt points_end,
         double max_width, double max_height, double padding)
-        : padding_(padding) //
+        : padding(padding) //
     {
         // ≈сли точки поверхности сферы не заданы, вычисл€ть нечего
         if (points_begin == points_end) {
@@ -70,13 +70,13 @@ public:
     // ѕроецирует широту и долготу в координаты внутри SVG-изображени€
     svg::Point operator()(geo::Coordinates coords) const {
         return {
-            (coords.lng - min_lon_) * zoom_coeff_ + padding_,
-            (max_lat_ - coords.lat) * zoom_coeff_ + padding_
+            (coords.lng - min_lon_) * zoom_coeff_ + padding,
+            (max_lat_ - coords.lat) * zoom_coeff_ + padding
         };
     }
 
 private:
-    double padding_;
+    double padding;
     double min_lon_ = 0;
     double max_lat_ = 0;
     double zoom_coeff_ = 0;
@@ -97,21 +97,26 @@ Polyline CreateRoute(const std::vector<const Stop*>& stops, const std::unordered
 
 MapRenderer::MapRenderer() = default;
 
-MapRenderer::MapRenderer(double width, double height, double padding, double line_width, double stop_radius, size_t bus_label_font_size,
+/*MapRenderer::MapRenderer(double width, double height, double padding, double line_width, double stop_radius, size_t bus_label_font_size,
 	std::pair<double, double> bus_label_offset, size_t stop_label_font_size, std::pair<double, double> stop_label_offset,
 	Color underlayer_color, double underlayer_width, std::vector<Color> color_palette) 
-	: width_(width),
-	height_(height),
-	padding_(padding),
-	line_width_(line_width),
-	stop_radius_(stop_radius),
-	bus_label_font_size_(bus_label_font_size),
-	bus_label_offset_(bus_label_offset),
-	stop_label_font_size_(stop_label_font_size),
-	stop_label_offset_(stop_label_offset),
-	underlayer_color_(underlayer_color),
-	underlayer_width_(underlayer_width),
-	color_palette_(color_palette)
+	: width(width),
+	height(height),
+	padding(padding),
+	line_width(line_width),
+	stop_radius(stop_radius),
+	bus_label_font_size(bus_label_font_size),
+	bus_label_offset(bus_label_offset),
+	stop_label_font_size(stop_label_font_size),
+	stop_label_offset(stop_label_offset),
+	underlayer_color(underlayer_color),
+	underlayer_width(underlayer_width),
+	color_palette(color_palette)
+{
+}*/
+
+MapRenderer::MapRenderer(RenderSettings&& render_settings)
+	: render_settings_(std::move(render_settings))
 {
 }
 
@@ -119,9 +124,9 @@ Text MapRenderer::MakeRouteName(const Point& point, const std::string& name) {
     using namespace std::literals;
     const Text busname = Text().SetFontFamily("Verdana"s)
         .SetFontWeight("bold"s)
-        .SetFontSize(bus_label_font_size_)
+        .SetFontSize(render_settings_.bus_label_font_size)
         .SetPosition(point)
-        .SetOffset({ bus_label_offset_.first, bus_label_offset_.second })
+        .SetOffset({ render_settings_.bus_label_offset.first, render_settings_.bus_label_offset.second })
         .SetData(name);
     return busname;
 }
@@ -132,18 +137,18 @@ void MapRenderer::FillRenderPolylines(const std::unordered_map<const Stop*, Poin
     size_t count = 0;
     for (const auto& [busname, bus_ptr] : busname_to_bus) {
         if (bus_ptr->stops.size()) {
-            size_t index_color = count % color_palette_.size();
+            size_t index_color = count % render_settings_.color_palette.size();
             render_doc_.Add(CreateRoute(bus_ptr->stops, stop_to_coordinates, bus_ptr->type_route).
-                SetStrokeWidth(line_width_).SetStrokeLineCap(StrokeLineCap::ROUND).
-                SetStrokeLineJoin(StrokeLineJoin::ROUND).SetStrokeColor(color_palette_[index_color]).
+                SetStrokeWidth(render_settings_.line_width).SetStrokeLineCap(StrokeLineCap::ROUND).
+                SetStrokeLineJoin(StrokeLineJoin::ROUND).SetStrokeColor(render_settings_.color_palette[index_color]).
                 SetFillColor({}));
 
             const Text busname_begin = MakeRouteName(stop_to_coordinates.at(bus_ptr->stops.front()), bus_ptr->name);
-            busnames_to_draw.push_back(std::make_pair(busname_begin, color_palette_[index_color]));
+            busnames_to_draw.push_back(std::make_pair(busname_begin, render_settings_.color_palette[index_color]));
 
             if (bus_ptr->type_route == TypeRoute::line && bus_ptr->stops.front() != bus_ptr->stops.back()) {
                 const Text busname_end = MakeRouteName(stop_to_coordinates.at(bus_ptr->stops.back()), bus_ptr->name);
-                busnames_to_draw.push_back(std::make_pair(busname_end, color_palette_[index_color]));
+                busnames_to_draw.push_back(std::make_pair(busname_end, render_settings_.color_palette[index_color]));
             }
             ++count;
         }
@@ -154,7 +159,7 @@ void MapRenderer::Render(const TransportCatalogue& tran_cat) {
     using namespace std::literals;
     
     const auto stops = tran_cat.GetValidStops();
-    SphereProjector projector(stops.begin(), stops.end(), width_, height_, padding_);
+    SphereProjector projector(stops.begin(), stops.end(), render_settings_.width, render_settings_.height, render_settings_.padding);
     std::unordered_map<const Stop*, Point> stop_to_coordinates;
     for (const auto& stop : stops) {
         stop_to_coordinates[stop] = projector(stop->coordinates);
@@ -166,32 +171,32 @@ void MapRenderer::Render(const TransportCatalogue& tran_cat) {
 
     for (const auto& [busname, color] : busnames_to_draw) {
         render_doc_.Add(Text{ busname }
-            .SetStrokeColor(underlayer_color_)
-            .SetFillColor(underlayer_color_)
+            .SetStrokeColor(render_settings_.underlayer_color)
+            .SetFillColor(render_settings_.underlayer_color)
             .SetStrokeLineJoin(StrokeLineJoin::ROUND)
             .SetStrokeLineCap(StrokeLineCap::ROUND)
-            .SetStrokeWidth(underlayer_width_));
+            .SetStrokeWidth(render_settings_.underlayer_width));
         render_doc_.Add(Text{ busname }.SetFillColor(color));
     }
 
     for (const auto& stop : stops) {
         const auto& center = stop_to_coordinates[stop];
-        render_doc_.Add(Circle().SetCenter(center).SetRadius(stop_radius_).SetFillColor("white"s));
+        render_doc_.Add(Circle().SetCenter(center).SetRadius(render_settings_.stop_radius).SetFillColor("white"s));
     }
 
     for (const auto& stop : stops) {
         const auto& center = stop_to_coordinates[stop];
         const Text stopname = Text().SetFontFamily("Verdana"s)
-            .SetFontSize(stop_label_font_size_)
+            .SetFontSize(render_settings_.stop_label_font_size)
             .SetPosition(center)
-            .SetOffset({ stop_label_offset_.first, stop_label_offset_.second })
+            .SetOffset({ render_settings_.stop_label_offset.first, render_settings_.stop_label_offset.second })
             .SetData(stop->name);
         render_doc_.Add(Text{ stopname }
-            .SetStrokeColor(underlayer_color_)
-            .SetFillColor(underlayer_color_)
+            .SetStrokeColor(render_settings_.underlayer_color)
+            .SetFillColor(render_settings_.underlayer_color)
             .SetStrokeLineJoin(StrokeLineJoin::ROUND)
             .SetStrokeLineCap(StrokeLineCap::ROUND)
-            .SetStrokeWidth(underlayer_width_));
+            .SetStrokeWidth(render_settings_.underlayer_width));
         render_doc_.Add(Text{ stopname }.SetFillColor("black"s));
     }
 }

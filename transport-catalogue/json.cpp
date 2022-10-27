@@ -180,7 +180,7 @@ Node LoadNull(istream& input) {
     for (char c; input >> c;) {
         str.push_back(c);
         if (str == "null"s) {
-            return {nullptr};
+            return { nullptr };
         }
         if (str.size() == 4) {
             break;
@@ -314,7 +314,7 @@ void PrintValue(const std::string& value, const PrintContext& ptcx) {
             break;
         }
     }
-    ptcx.out  << "\""s;
+    ptcx.out << "\""s;
 }
 
 void PrintValue(const bool value, const PrintContext& ptcx) {
@@ -335,7 +335,7 @@ void PrintValue(const Array& value, const PrintContext& ptcx) {
         is_first = false;
         PrintNode(node, ptcx);
     }
-    
+
     ptcx.out << "]"s;
 }
 
@@ -354,9 +354,9 @@ void PrintValue(const Dict& value, const PrintContext& ptcx) {
     ptcx.out << "}"s;
 }
 
-Node::Node() = default;
+/*Node::Node() = default;
 
-Node::Node(Array array) 
+Node::Node(Array array)
     :value_(std::move(array))
 {
 }
@@ -386,40 +386,40 @@ Node::Node(double value)
 Node::Node(std::nullptr_t value)
     :value_(std::move(value))
 {
-}
+}*/
 
 bool Node::IsInt() const {
-    return std::holds_alternative<int>(value_);
+    return std::holds_alternative<int>(*this);
 }
 bool Node::IsDouble() const {
-    return std::holds_alternative<int>(value_) || std::holds_alternative<double>(value_);
+    return std::holds_alternative<int>(*this) || std::holds_alternative<double>(*this);
 }
 bool Node::IsPureDouble() const {
-    return std::holds_alternative<double>(value_);
+    return std::holds_alternative<double>(*this);
 }
 bool Node::IsBool() const {
-    return std::holds_alternative<bool>(value_);
+    return std::holds_alternative<bool>(*this);
 }
 bool Node::IsString() const {
-    return std::holds_alternative<std::string>(value_);
+    return std::holds_alternative<std::string>(*this);
 }
 bool Node::IsNull() const {
-    return std::holds_alternative<std::nullptr_t>(value_);
+    return std::holds_alternative<std::nullptr_t>(*this);
 }
 bool Node::IsArray() const {
-    return std::holds_alternative<Array>(value_);
+    return std::holds_alternative<Array>(*this);
 }
 bool Node::IsMap() const {
-    return std::holds_alternative<Dict>(value_);
+    return std::holds_alternative<Dict>(*this);
 }
 
 const JsonType& Node::GetValue() const {
-    return value_;
+    return *this;
 }
 
 const Array& Node::AsArray() const {
     if (IsArray()) {
-        return std::get<Array>(value_);
+        return std::get<Array>(*this);
     }
     else {
         throw std::logic_error(""s);
@@ -428,7 +428,7 @@ const Array& Node::AsArray() const {
 
 const Dict& Node::AsMap() const {
     if (IsMap()) {
-        return std::get<Dict>(value_);
+        return std::get<Dict>(*this);
     }
     else {
         throw std::logic_error(""s);
@@ -437,7 +437,7 @@ const Dict& Node::AsMap() const {
 
 bool Node::AsBool() const {
     if (IsBool()) {
-        return std::get<bool>(value_);
+        return std::get<bool>(*this);
     }
     else {
         throw std::logic_error(""s);
@@ -446,10 +446,10 @@ bool Node::AsBool() const {
 
 double Node::AsDouble() const {
     if (IsPureDouble()) {
-        return std::get<double>(value_);
+        return std::get<double>(*this);
     }
     if (IsInt()) {
-        return std::get<int>(value_);
+        return std::get<int>(*this);
     }
     else {
         throw std::logic_error(""s);
@@ -458,7 +458,7 @@ double Node::AsDouble() const {
 
 int Node::AsInt() const {
     if (IsInt()) {
-        return std::get<int>(value_);
+        return std::get<int>(*this);
     }
     else {
         throw std::logic_error(""s);
@@ -467,7 +467,7 @@ int Node::AsInt() const {
 
 const string& Node::AsString() const {
     if (IsString()) {
-        return std::get<std::string>(value_);
+        return std::get<std::string>(*this);
     }
     else {
         throw std::logic_error(""s);
@@ -475,17 +475,17 @@ const string& Node::AsString() const {
 }
 
 Document::Document(Node root)
-: root_(move(root)) {
+    : root_(move(root)) {
 }
 
 Document::Document() = default;
 
 const Node& Document::GetRoot() const {
-return root_;
+    return root_;
 }
 
 Document Load(istream& input) {
-return Document{ LoadNode(input) };
+    return Document{ LoadNode(input) };
 }
 
 void PrintNode(const Node& node, const PrintContext& ptcx) {
