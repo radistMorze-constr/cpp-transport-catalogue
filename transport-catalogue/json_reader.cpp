@@ -1,4 +1,5 @@
 #include "json_reader.h"
+#include "json_builder.h"
 
 #include <iostream>
 #include <sstream>
@@ -37,18 +38,18 @@ Color ParseColor(const Node& color_node) {
 }
 
 void Facade::InitialiseBaseRequests() {
-	const auto& base_requests = document_.GetRoot().AsMap().at("base_requests"s).AsArray();
+	const auto& base_requests = document_.GetRoot().AsDict().at("base_requests"s).AsArray();
 	std::vector<const Node*> bus_requests;
 	bus_requests.reserve(base_requests.size());
 	std::unordered_map < const Stop*, Dict> stop_to_lengths_to_stops;
 	for (const auto& request : base_requests) {
-		const auto& request_as_map = request.AsMap();
+		const auto& request_as_map = request.AsDict();
 		if (request_as_map.at("type"s).AsString() == "Stop"s) {
 			const auto& name = request_as_map.at("name"s).AsString();
 			const auto lat = request_as_map.at("latitude"s).AsDouble();
 			const auto lng = request_as_map.at("longitude"s).AsDouble();
 			tran_cat_.AddStop({ std::move(name), {lat, lng} });
-			stop_to_lengths_to_stops[tran_cat_.FindStop(name)] = request_as_map.at("road_distances"s).AsMap();
+			stop_to_lengths_to_stops[tran_cat_.FindStop(name)] = request_as_map.at("road_distances"s).AsDict();
 		}
 		else if (request_as_map.at("type"s).AsString() == "Bus"s) {
 			bus_requests.push_back(&request);
@@ -63,7 +64,7 @@ void Facade::InitialiseBaseRequests() {
 	}
 
 	for (const auto& request : bus_requests) {
-		const auto& request_as_map = request->AsMap();
+		const auto& request_as_map = request->AsDict();
 		auto& busname = request_as_map.at("name"s).AsString();
 		std::vector<const Stop*> stops;
 		std::unordered_set<std::string_view> unique_stops;
@@ -77,7 +78,7 @@ void Facade::InitialiseBaseRequests() {
 }
 
 void Facade::InitialiseRenderSettings() {
-	const auto& render_settings = document_.GetRoot().AsMap().at("render_settings"s).AsMap();
+	const auto& render_settings = document_.GetRoot().AsDict().at("render_settings"s).AsDict();
 	const auto& bus_offset = render_settings.at("bus_label_offset"s).AsArray();
 	const auto bus_label_offset = std::make_pair(bus_offset[0].AsDouble(), bus_offset[1].AsDouble());
 
@@ -108,24 +109,23 @@ Facade::Facade(std::istream& thread)
 }
 
 void Facade::AsnwerRequests(std::ostream& thread) {
-	const auto& stat_requests = document_.GetRoot().AsMap().at("stat_requests"s).AsArray();
-	Array result;
-	result.reserve(stat_requests.size());
+	const auto& stat_requests = document_.GetRoot().AsDict().at("stat_requests"s).AsArray();
+	Builder builder = Builder{};
+	auto result = builder.StartArray();
 	for (const auto& request : stat_requests) {
-		const auto& request_as_map = request.AsMap();
+		const auto& request_as_map = request.AsDict();
 		if (request_as_map.at("type"s).AsString() == "Bus"s) {
 			auto bus_info = tran_cat_.GetInfromBus(request_as_map.at("name"s).AsString());
 			if (!bus_info) {
-				Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, {"error_message"s, "not found"s} });
-				result.push_back(std::move(node));
+				result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value("not found"s).EndDict();
 			}
 			else {
-				Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() },
-					{ "curvature"s, bus_info->curvature },
-					{ "route_length"s, bus_info->length },
-					{ "stop_count"s, static_cast<int>(bus_info->amount_stops) },
-					{ "unique_stop_count"s, static_cast<int>(bus_info->amount_unique_stops) } });
-				result.push_back(std::move(node));
+				result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt())
+					.Key("curvature"s).Value(bus_info->curvature)
+					.Key("route_length"s).Value(bus_info->length)
+					.Key("stop_count"s).Value(static_cast<int>(bus_info->amount_stops))
+					.Key("unique_stop_count"s).Value(static_cast<int>(bus_info->amount_unique_stops))
+					.EndDict();
 			}
 		}
 		else if (request_as_map.at("type"s).AsString() == "Stop"s) {
@@ -136,25 +136,24 @@ void Facade::AsnwerRequests(std::ostream& thread) {
 				for (const auto& sv : busses) {
 					names.push_back(std::string(sv));
 				}
-				Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "buses"s, std::move(names) } });
-				result.push_back(std::move(node));
+				result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("buses"s).Value(std::move(names)).EndDict();
 			}
 			catch (std::string error) {
-				Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "error_message"s, error } });
-				result.push_back(std::move(node));
+				//Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "error_message"s, error } });
+				//result.push_back(std::move(node));
+				result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value(error).EndDict();
 			}
 		}
 		else if (request_as_map.at("type"s).AsString() == "Map"s) {
 			std::ostringstream render;
 			RenderRoute(render);
-			Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "map"s, render.str()}});
-			result.push_back(std::move(node));
+			result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("map"s).Value(render.str()).EndDict();
 		}
 		else {
 			throw std::invalid_argument("Input contains not correct request!"s);
 		}
 	}
-	Print(json::Document(result), thread);
+	json::Print(json::Document(result.EndArray().Build()), thread);
 }
 
 void Facade::RenderRoute(std::ostream& thread) {

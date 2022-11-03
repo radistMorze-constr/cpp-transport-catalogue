@@ -13,8 +13,6 @@ using namespace geo;
 int main() {
     //TestTransportCatalogue();
 
-    //TransportCatalogue tran_cat;
-
     std::istream& stream_input = std::cin;
     //std::fstream stream_input("s10_final_opentest_3.json");
     std::ostream& stream_output = std::cout;
