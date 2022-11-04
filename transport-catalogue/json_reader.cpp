@@ -108,50 +108,64 @@ Facade::Facade(std::istream& thread)
 	InitialiseRenderSettings();
 }
 
+json::Node Facade::HandleBusRequest(const json::Dict& request_as_map) const {
+	auto bus_info = tran_cat_.GetInfromBus(request_as_map.at("name"s).AsString());
+	Node node;
+	if (!bus_info) {
+		return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value("not found"s).EndDict().Build();
+	}
+	else {
+		return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt())
+			.Key("curvature"s).Value(bus_info->curvature)
+			.Key("route_length"s).Value(bus_info->length)
+			.Key("stop_count"s).Value(static_cast<int>(bus_info->amount_stops))
+			.Key("unique_stop_count"s).Value(static_cast<int>(bus_info->amount_unique_stops))
+			.EndDict().Build();
+	}
+}
+
+json::Node Facade::HandleStopRequest(const json::Dict& request_as_map) const {
+	Node node;
+	try {
+		auto busses = tran_cat_.GetListBusses(request_as_map.at("name"s).AsString());
+		Array names;
+		names.reserve(busses.size());
+		for (const auto& sv : busses) {
+			names.push_back(std::string(sv));
+		}
+		return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("buses"s).Value(std::move(names)).EndDict().Build();
+	}
+	catch (std::string error) {
+		return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value(error).EndDict().Build();
+	}
+}
+
+json::Node Facade::HandleMapRequest(const json::Dict& request_as_map) {
+	std::ostringstream render;
+	RenderRoute(render);
+	return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("map"s).Value(render.str()).EndDict().Build();
+}
+
 void Facade::AsnwerRequests(std::ostream& thread) {
 	const auto& stat_requests = document_.GetRoot().AsDict().at("stat_requests"s).AsArray();
 	Builder builder = Builder{};
 	auto result = builder.StartArray();
 	for (const auto& request : stat_requests) {
 		const auto& request_as_map = request.AsDict();
+		Node node;
 		if (request_as_map.at("type"s).AsString() == "Bus"s) {
-			auto bus_info = tran_cat_.GetInfromBus(request_as_map.at("name"s).AsString());
-			if (!bus_info) {
-				result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value("not found"s).EndDict();
-			}
-			else {
-				result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt())
-					.Key("curvature"s).Value(bus_info->curvature)
-					.Key("route_length"s).Value(bus_info->length)
-					.Key("stop_count"s).Value(static_cast<int>(bus_info->amount_stops))
-					.Key("unique_stop_count"s).Value(static_cast<int>(bus_info->amount_unique_stops))
-					.EndDict();
-			}
+			node = HandleBusRequest(request_as_map);
 		}
 		else if (request_as_map.at("type"s).AsString() == "Stop"s) {
-			try {
-				auto busses = tran_cat_.GetListBusses(request_as_map.at("name"s).AsString());
-				Array names;
-				names.reserve(busses.size());
-				for (const auto& sv : busses) {
-					names.push_back(std::string(sv));
-				}
-				result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("buses"s).Value(std::move(names)).EndDict();
-			}
-			catch (std::string error) {
-				//Node node(Dict{ { "request_id"s, request_as_map.at("id"s).AsInt() }, { "error_message"s, error } });
-				//result.push_back(std::move(node));
-				result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value(error).EndDict();
-			}
+			node = HandleStopRequest(request_as_map);
 		}
 		else if (request_as_map.at("type"s).AsString() == "Map"s) {
-			std::ostringstream render;
-			RenderRoute(render);
-			result.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("map"s).Value(render.str()).EndDict();
+			node = HandleMapRequest(request_as_map);
 		}
 		else {
 			throw std::invalid_argument("Input contains not correct request!"s);
 		}
+		result.Value(std::move(node.GetValue()));
 	}
 	json::Print(json::Document(result.EndArray().Build()), thread);
 }

@@ -17,6 +17,9 @@ public:
 protected:
 	void InitialiseBaseRequests();
 	void InitialiseRenderSettings();
+	json::Node HandleBusRequest(const json::Dict& request_as_map) const;
+	json::Node HandleStopRequest(const json::Dict& request_as_map) const;
+	json::Node HandleMapRequest(const json::Dict& request_as_map);
 private:
 	TransportCatalogue tran_cat_;
 	rendering::MapRenderer map_render_;

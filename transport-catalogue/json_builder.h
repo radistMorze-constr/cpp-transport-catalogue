@@ -7,33 +7,32 @@
 #include <stdexcept>
 
 namespace json {
-using namespace std::literals;
 
 enum class Command {
-	key,
-	value,
-	start_dict,
-	end_dict,
-	start_array,
-	end_array
+	KEY,
+	VALUE,
+	START_DICT,
+	END_DICT,
+	START_ARRAY,
+	END_ARRAY
 };
 
 class Builder {
 private:
 	class BaseContext;
-
 	class DictKeyContext;
-
 	class DictItemContext;
-
 	class DictValueContext;
-
 	class ArrayItemContext;
-
 	class ArrayValueContext;
 
 public:
 	Builder() = default;
+	Builder(Builder& builder) = delete;
+	Builder(Builder&& builder) = delete;
+	Builder& operator=(Builder& builder) = delete;
+	Builder& operator=(Builder&& builder) = delete;
+
 	DictItemContext StartDict();
 	DictKeyContext Key(std::string&& key);
 	BaseContext Value(Node::Value&& value);
@@ -43,8 +42,6 @@ public:
 	Node Build();
 
 private:
-	bool CommandIsCorrect(Command value);
-
 	std::deque<Command> command_list_;
 	std::deque<Node*> unfinished_element_ = { &node_ };
 	Node node_;
@@ -55,19 +52,12 @@ public:
 	BaseContext(Builder& builder);
 
 	DictItemContext StartDict();
-
 	DictKeyContext Key(std::string&& key);
-
 	BaseContext Value(Node::Value&& value);
-
 	ArrayItemContext StartArray();
-
 	BaseContext EndDict();
-
 	BaseContext EndArray();
-
 	Node Build();
-
 	Builder& builder_;
 };
 
