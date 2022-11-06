@@ -1,6 +1,7 @@
 #include "json_builder.h"
 
 namespace json {
+using namespace std::literals;
 
 Builder::BaseContext::BaseContext(Builder& builder)
 	: builder_(builder)
@@ -50,6 +51,9 @@ Builder::ArrayValueContext Builder::ArrayValueContext::Value(Node::Value&& value
 }
 
 Builder::DictItemContext Builder::StartDict() {
+	if (!(command_list_.empty() || command_list_.back() == Command::KEY || command_list_.back() == Command::START_ARRAY)) {
+		throw std::logic_error("Not correct call of command \"StartDict\"!"s);
+	}
 	if (command_list_.empty()) {
 		auto* it = unfinished_element_.back();
 		*it = { Dict() };
@@ -70,6 +74,9 @@ Builder::DictItemContext Builder::StartDict() {
 }
 
 Builder::DictKeyContext Builder::Key(std::string&& key) {
+	if (command_list_.empty() || command_list_.back() != Command::START_DICT) {
+		throw std::logic_error("Not correct call of command \"Key\"!"s);
+	}	
 	command_list_.push_back(Command::KEY);
 	auto* it = unfinished_element_.back();
 	auto& it_as_dict = std::get<Dict>(it->GetValue());
@@ -78,6 +85,9 @@ Builder::DictKeyContext Builder::Key(std::string&& key) {
 }
 
 Builder::BaseContext Builder::Value(Node::Value&& value) {
+	if (!(command_list_.empty() || command_list_.back() == Command::KEY || command_list_.back() == Command::START_ARRAY)) {
+		throw std::logic_error("Not correct call of command \"Value\"!"s);
+	}
 	if (command_list_.empty()) {
 		auto* it = unfinished_element_.back();
 		it->GetValue() = std::move(value);
@@ -102,6 +112,9 @@ Builder::BaseContext Builder::Value(Node::Value&& value) {
 }
 
 Builder::ArrayItemContext Builder::StartArray() {
+	if (!(command_list_.empty() || command_list_.back() == Command::KEY || command_list_.back() == Command::START_ARRAY)) {
+		throw std::logic_error("Not correct call of command \"StartArray\"!"s);
+	}
 	if (command_list_.empty()) {
 		auto* it = unfinished_element_.back();
 		*it = { Array() };
@@ -122,12 +135,18 @@ Builder::ArrayItemContext Builder::StartArray() {
 }
 
 Builder::BaseContext Builder::EndDict() {
+	if (command_list_.empty() || command_list_.back() != Command::START_DICT) {
+		throw std::logic_error("Not correct call of command \"EndDict\"!"s);
+	}
 	unfinished_element_.pop_back();
 	command_list_.pop_back();
 	return BaseContext(*this);
 }
 
 Builder::BaseContext Builder::EndArray() {
+	if (command_list_.empty() || command_list_.back() != Command::START_ARRAY) {
+		throw std::logic_error("Not correct call of command \"EndArray\"!"s);
+	}
 	unfinished_element_.pop_back();
 	command_list_.pop_back();
 	return BaseContext(*this);
