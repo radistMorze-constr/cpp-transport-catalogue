@@ -5,11 +5,24 @@
 #include <string_view>
 #include <vector>
 #include <unordered_set>
+#include <optional>
 
 namespace transport_catalogue {
+
 enum class TypeRoute {
 	circle,
 	line
+};
+
+struct RouteSettings {
+	double bus_velocity;
+	double bus_wait_time;
+};
+
+enum class ActionType {
+	ITEM,
+	WAIT,
+	BUS
 };
 
 struct Stop {
@@ -32,4 +45,32 @@ struct BusInfo {
 	double length;
 	double curvature;
 };
+
+struct Item {
+	Item(double loc_time, std::string_view loc_name = {}, ActionType loc_type = ActionType::ITEM, std::optional<int> loc_span_count = std::nullopt)
+		: time(loc_time),
+		name(loc_name),
+		type(loc_type),
+		span_count(loc_span_count)
+	{}
+
+	Item() = default;
+
+	double time = 0;
+	std::string_view name = {};
+	ActionType type = ActionType::ITEM;
+	std::optional<int> span_count = std::nullopt;
+};
+
+inline bool operator<(const Item& lhs, const Item& rhs) {
+	return lhs.time < rhs.time;
+}
+
+inline bool operator>(const Item& lhs, const Item& rhs) {
+	return lhs.time > rhs.time;
+}
+
+inline Item operator+(const Item& lhs, const Item& rhs) {
+	return { lhs.time + rhs.time };
+}
 } //namespace transport_catalogue

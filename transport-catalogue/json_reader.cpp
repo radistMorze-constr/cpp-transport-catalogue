@@ -11,6 +11,8 @@ namespace handle_iformation {
 using namespace std::literals;
 using namespace svg;
 using namespace json;
+using namespace graph;
+using namespace transport_router;
 
 Color ParseColor(const Node& color_node) {
 	Color color;
@@ -75,6 +77,8 @@ void Facade::InitialiseBaseRequests() {
 		auto type_route = request_as_map.at("is_roundtrip"s).AsBool() ? TypeRoute::circle : TypeRoute::line;
 		tran_cat_.AddBus({ std::move(busname), std::move(stops), std::move(type_route), std::move(unique_stops) });
 	}
+
+	tran_cat_.BuildValidStopsVertex();
 }
 
 void Facade::InitialiseRenderSettings() {
@@ -101,11 +105,20 @@ void Facade::InitialiseRenderSettings() {
 	map_render_ = rendering::MapRenderer(std::move(settings));
 }
 
-Facade::Facade(std::istream& thread) 
+void Facade::InitializeTransportRouter() {
+	const auto& routing_settings_doc = document_.GetRoot().AsDict().at("routing_settings"s).AsDict();
+	auto bus_velocity = routing_settings_doc.at("bus_velocity"s).AsDouble();
+	auto bus_wait_time = routing_settings_doc.at("bus_wait_time"s).AsDouble();
+	RouteSettings route_settings = { bus_velocity, bus_wait_time };
+	transport_router_ = transport_router::TransportRouter(tran_cat_, std::move(route_settings));
+}
+
+Facade::Facade(std::istream& thread)  
 	: document_(Load(thread)) 
 {
 	InitialiseBaseRequests();
 	InitialiseRenderSettings();
+	InitializeTransportRouter();
 }
 
 json::Node Facade::HandleBusRequest(const json::Dict& request_as_map) const {
@@ -161,6 +174,10 @@ void Facade::AsnwerRequests(std::ostream& thread) {
 		}
 		else if (request_as_map.at("type"s).AsString() == "Map"s) {
 			node = HandleMapRequest(request_as_map);
+		}
+		else if (request_as_map.at("type"s).AsString() == "Route"s) {
+			const auto& valid_stopname_to_vertex = tran_cat_.GetValidStopsVertex();
+			node = transport_router_.FindRoute(request_as_map, valid_stopname_to_vertex);
 		}
 		else {
 			throw std::invalid_argument("Input contains not correct request!"s);

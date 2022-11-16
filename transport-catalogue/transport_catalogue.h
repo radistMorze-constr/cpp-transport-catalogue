@@ -13,6 +13,7 @@
 #include <optional>
 
 namespace transport_catalogue {
+using VertexId = size_t;
 
 namespace detail {
 class HashTransportCatalogue {
@@ -39,6 +40,8 @@ public:
 
 	const std::map<std::string_view, const Bus*>& GetBusnameToBus() const;
 	const std::vector<const Stop*> GetValidStops() const;
+	void BuildValidStopsVertex();
+	const std::map<std::string_view, VertexId>& GetValidStopsVertex() const;
 private:
 	std::deque<Stop> stops;
 	std::unordered_map<std::string_view, const Stop*> stopname_to_stop_;
@@ -46,5 +49,6 @@ private:
 	std::map<std::string_view, const Bus*> busname_to_bus_;
 	std::unordered_map<std::pair<const Stop*, const Stop*>, double, detail::HashTransportCatalogue> distance_stops_;
 	std::unordered_map<const Stop*, std::set<std::string_view>> stopname_to_busses_;
+	std::map<std::string_view, VertexId> valid_stopname_to_vertex_;
 };
 } //namespace transport_catalogue

@@ -132,4 +132,16 @@ const std::vector<const Stop*> TransportCatalogue::GetValidStops() const {
 		});
 	return result;
 }
+
+void TransportCatalogue::BuildValidStopsVertex() {
+	VertexId index = 0;
+	for (const auto& [stopname, stop] : stopname_to_stop_) {
+		valid_stopname_to_vertex_[stopname] = index;
+		index += 2;
+	}
+}
+
+const std::map<std::string_view, VertexId>& TransportCatalogue::GetValidStopsVertex() const {
+	return valid_stopname_to_vertex_;;
+}
 } //namespace transport_catalogue
