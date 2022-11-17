@@ -159,6 +159,31 @@ json::Node Facade::HandleMapRequest(const json::Dict& request_as_map) {
 	return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("map"s).Value(render.str()).EndDict().Build();
 }
 
+json::Node Facade::HandleRouteRequest(const json::Dict& request_as_map) const {
+	const auto& valid_stopname_to_vertex = tran_cat_.GetValidStopsVertex();
+	const auto& route_info = transport_router_.FindRoute(request_as_map, valid_stopname_to_vertex);
+	const auto& route_settings = transport_router_.GetRouteSettings();
+	if (!route_info) {
+		return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value("not found"s).EndDict().Build();
+	}
+	else {
+		Builder builder = Builder{};
+		auto items = builder.StartDict().Key("items"s).StartArray();
+		for (const auto& edge_id : route_info->edges) {
+			const auto& edge = transport_router_.GetGraphEdge(edge_id);
+			if (edge.from % 2 == 0 && edge.to - edge.from == 1) {
+				items.StartDict().Key("type"s).Value("Wait"s).Key("stop_name"s).Value(std::string(edge.weight.name))
+					.Key("time"s).Value(route_settings.bus_wait_time).EndDict();
+			}
+			else {
+				items.StartDict().Key("type"s).Value("Bus"s).Key("bus"s).Value(std::string(edge.weight.name)).Key("span_count"s).Value(edge.weight.span_count.value())
+					.Key("time"s).Value(edge.weight.time).EndDict();
+			}
+		}
+		return items.EndArray().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("total_time"s).Value(route_info->weight.time).EndDict().Build();
+	}
+}
+
 void Facade::AsnwerRequests(std::ostream& thread) {
 	const auto& stat_requests = document_.GetRoot().AsDict().at("stat_requests"s).AsArray();
 	Builder builder = Builder{};
@@ -176,8 +201,7 @@ void Facade::AsnwerRequests(std::ostream& thread) {
 			node = HandleMapRequest(request_as_map);
 		}
 		else if (request_as_map.at("type"s).AsString() == "Route"s) {
-			const auto& valid_stopname_to_vertex = tran_cat_.GetValidStopsVertex();
-			node = transport_router_.FindRoute(request_as_map, valid_stopname_to_vertex);
+			node = HandleRouteRequest(request_as_map);
 		}
 		else {
 			throw std::invalid_argument("Input contains not correct request!"s);

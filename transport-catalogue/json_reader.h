@@ -22,6 +22,7 @@ protected:
 	json::Node HandleBusRequest(const json::Dict& request_as_map) const;
 	json::Node HandleStopRequest(const json::Dict& request_as_map) const;
 	json::Node HandleMapRequest(const json::Dict& request_as_map);
+	json::Node HandleRouteRequest(const json::Dict& request_as_map) const;
 private:
 	TransportCatalogue tran_cat_;
 	rendering::MapRenderer map_render_;
