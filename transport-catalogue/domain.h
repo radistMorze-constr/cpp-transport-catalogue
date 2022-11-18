@@ -73,4 +73,9 @@ inline bool operator>(const Item& lhs, const Item& rhs) {
 inline Item operator+(const Item& lhs, const Item& rhs) {
 	return { lhs.time + rhs.time };
 }
+
+struct FoundedRoute {
+	double total_time = 0;
+	std::vector<const Item*> elements;
+};
 } //namespace transport_catalogue

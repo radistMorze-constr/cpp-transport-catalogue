@@ -61,8 +61,10 @@ void Facade::InitialiseBaseRequests() {
 		}
 	}
 
-	for (const auto& [stop, stop_length] : stop_to_lengths_to_stops) {
-		tran_cat_.SetLengthInStops(stop, stop_length);
+	for (const auto& [stop_from, stop_length] : stop_to_lengths_to_stops) {
+		for (const auto& [stop_to, length] : stop_length) {
+			tran_cat_.SetLengthInStops(stop_from, tran_cat_.FindStop(stop_to), length.AsDouble());
+		}
 	}
 
 	for (const auto& request : bus_requests) {
@@ -77,8 +79,6 @@ void Facade::InitialiseBaseRequests() {
 		auto type_route = request_as_map.at("is_roundtrip"s).AsBool() ? TypeRoute::circle : TypeRoute::line;
 		tran_cat_.AddBus({ std::move(busname), std::move(stops), std::move(type_route), std::move(unique_stops) });
 	}
-
-	tran_cat_.BuildValidStopsVertex();
 }
 
 void Facade::InitialiseRenderSettings() {
@@ -160,27 +160,26 @@ json::Node Facade::HandleMapRequest(const json::Dict& request_as_map) {
 }
 
 json::Node Facade::HandleRouteRequest(const json::Dict& request_as_map) const {
-	const auto& valid_stopname_to_vertex = tran_cat_.GetValidStopsVertex();
-	const auto& route_info = transport_router_.FindRoute(request_as_map, valid_stopname_to_vertex);
-	const auto& route_settings = transport_router_.GetRouteSettings();
-	if (!route_info) {
+	auto& stop_from = request_as_map.at("from"s).AsString();
+	auto& stop_to = request_as_map.at("to"s).AsString();
+	const auto& founded_route = transport_router_.FindRoute(stop_from, stop_to);
+	if (!founded_route) {
 		return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value("not found"s).EndDict().Build();
 	}
 	else {
 		Builder builder = Builder{};
 		auto items = builder.StartDict().Key("items"s).StartArray();
-		for (const auto& edge_id : route_info->edges) {
-			const auto& edge = transport_router_.GetGraphEdge(edge_id);
-			if (edge.from % 2 == 0 && edge.to - edge.from == 1) {
-				items.StartDict().Key("type"s).Value("Wait"s).Key("stop_name"s).Value(std::string(edge.weight.name))
-					.Key("time"s).Value(route_settings.bus_wait_time).EndDict();
+		for (const auto& item : founded_route->elements) {
+			if (item->type == ActionType::WAIT) {
+				items.StartDict().Key("type"s).Value("Wait"s).Key("stop_name"s).Value(std::string(item->name))
+					.Key("time"s).Value(item->time).EndDict();
 			}
 			else {
-				items.StartDict().Key("type"s).Value("Bus"s).Key("bus"s).Value(std::string(edge.weight.name)).Key("span_count"s).Value(edge.weight.span_count.value())
-					.Key("time"s).Value(edge.weight.time).EndDict();
+				items.StartDict().Key("type"s).Value("Bus"s).Key("bus"s).Value(std::string(item->name)).Key("span_count"s).Value(item->span_count.value())
+					.Key("time"s).Value(item->time).EndDict();
 			}
 		}
-		return items.EndArray().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("total_time"s).Value(route_info->weight.time).EndDict().Build();
+		return items.EndArray().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("total_time"s).Value(founded_route->total_time).EndDict().Build();
 	}
 }
 

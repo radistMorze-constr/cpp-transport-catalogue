@@ -109,11 +109,9 @@ double TransportCatalogue::GetLengthInStops(const Stop* left, const Stop* right)
 	}
 }
 
-void TransportCatalogue::SetLengthInStops(const Stop* from, json::Dict stop_length) {
-	for (const auto& [stop, length] : stop_length) {
-		auto key = std::make_pair(from, FindStop(stop));
-		distance_stops_[key] = length.AsDouble();
-	}
+void TransportCatalogue::SetLengthInStops(const Stop* from, const Stop* to, double length) {
+	auto key = std::make_pair(from, to);
+	distance_stops_[key] = length;
 }
 
 const std::map<std::string_view, const Bus*>& TransportCatalogue::GetBusnameToBus() const {
@@ -133,15 +131,7 @@ const std::vector<const Stop*> TransportCatalogue::GetValidStops() const {
 	return result;
 }
 
-void TransportCatalogue::BuildValidStopsVertex() {
-	VertexId index = 0;
-	for (const auto& [stopname, stop] : stopname_to_stop_) {
-		valid_stopname_to_vertex_[stopname] = index;
-		index += 2;
-	}
-}
-
-const std::map<std::string_view, VertexId>& TransportCatalogue::GetValidStopsVertex() const {
-	return valid_stopname_to_vertex_;;
+const std::unordered_map<std::string_view, const Stop*>& TransportCatalogue::GetStopnameToStop() const {
+	return stopname_to_stop_;
 }
 } //namespace transport_catalogue
