@@ -37,13 +37,11 @@ std::optional<FoundedRoute> TransportRouter::FindRoute(std::string_view stop_fro
 	if (!route_info) {
 		return {};
 	}
-	else {
-		std::vector<const Item*> elements;
-		std::transform(route_info->edges.begin(), route_info->edges.end(), std::back_inserter(elements), [&](const EdgeId& edge_id) {
-			return &graph_->GetEdge(edge_id).weight;
-			});
-		FoundedRoute founded_route = { route_info->weight.time, elements };
-		return founded_route;
-	}
+	std::vector<const Item*> elements;
+	std::transform(route_info->edges.begin(), route_info->edges.end(), std::back_inserter(elements), [&](const EdgeId& edge_id) {
+		return &graph_->GetEdge(edge_id).weight;
+		});
+	FoundedRoute founded_route = { route_info->weight.time, elements };
+	return founded_route;
 }
 } //namespace transport_router

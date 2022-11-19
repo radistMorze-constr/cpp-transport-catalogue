@@ -17,15 +17,15 @@ public:
 
 	TransportRouter(const transport_catalogue::TransportCatalogue& tran_cat, transport_catalogue::RouteSettings&& route_settings);
 	std::optional<transport_catalogue::FoundedRoute> FindRoute(std::string_view stop_from, std::string_view stop_to) const;
-protected:
-	void BuildValidStopsVertex(const std::unordered_map<std::string_view, const transport_catalogue::Stop*>& stopname_to_stop);
-	template <typename Iterator>
-	void FullfillGraph(Iterator begin, Iterator end, const transport_catalogue::TransportCatalogue& tran_cat, std::string_view busname);
 private:
 	transport_catalogue::RouteSettings route_settings_;
 	std::unique_ptr<graph::DirectedWeightedGraph<Item>> graph_;
 	std::unique_ptr<graph::Router<Item>> router_ptr_;
 	std::map<std::string_view, VertexId> valid_stopname_to_vertex_;
+
+	void BuildValidStopsVertex(const std::unordered_map<std::string_view, const transport_catalogue::Stop*>& stopname_to_stop);
+	template <typename Iterator>
+	void FullfillGraph(Iterator begin, Iterator end, const transport_catalogue::TransportCatalogue& tran_cat, std::string_view busname);
 };
 
 template <typename Iterator>
