@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package svg_serialize;
+
+enum ColorType {
+	COLORTYPE_MONOSTATE = 0;
+	COLORTYPE_STRING = 1;
+	COLORTYPE_RGB = 2;
+	COLORTYPE_RGBA = 3;
+}
+
+message Rgb {
+	int32 red = 1;
+	int32 green = 2;
+	int32 blue = 3;
+}
+
+message Rgba {
+	int32 red = 1;
+	int32 green = 2;
+	int32 blue = 3;
+	double opacity = 4;
+}
+
+message Color {
+	ColorType color_type = 1;
+	string color_string = 2;
+	Rgb color_rgb = 3;
+	Rgba color_rgba = 4;
+}

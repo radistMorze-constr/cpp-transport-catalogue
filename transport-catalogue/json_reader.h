@@ -4,6 +4,7 @@
 #include "transport_catalogue.h"
 #include "map_renderer.h"
 #include "transport_router.h"
+#include "serialization.h"
 
 #include <iostream>
 
@@ -13,12 +14,16 @@ namespace handle_iformation {
 class Facade {
 public:
 	explicit Facade(std::istream& thread);
+
 	void AsnwerRequests(std::ostream& thread);
 	void RenderRoute(std::ostream& thread);
-protected:
+	void Serialize();	
+	void Deserialize();
+protected: // Ќадо сделать private, наследовани€ же нет, не отличаетс€ от private
 	void InitialiseBaseRequests();
 	void InitialiseRenderSettings();
 	void InitializeTransportRouter();
+	void InitializeSerializationSettings();
 	json::Node HandleBusRequest(const json::Dict& request_as_map) const;
 	json::Node HandleStopRequest(const json::Dict& request_as_map) const;
 	json::Node HandleMapRequest(const json::Dict& request_as_map);
@@ -28,6 +33,7 @@ private:
 	rendering::MapRenderer map_render_;
 	json::Document document_;
 	transport_router::TransportRouter transport_router_;
+	std::string serialization_file_;
 };
 
 } //namespace handle_iformation

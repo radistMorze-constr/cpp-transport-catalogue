@@ -14,14 +14,24 @@ using VertexId = size_t;
 class TransportRouter {
 public:
 	TransportRouter() = default;
+	TransportRouter(transport_catalogue::RouteSettings&& route_settings,
+		std::unique_ptr<graph::DirectedWeightedGraph<Item>>&& graph,
+		std::unique_ptr<graph::Router<Item>>&& router_ptr,
+		std::map<std::string, VertexId>&& valid_stopname_to_vertex);
 
 	TransportRouter(const transport_catalogue::TransportCatalogue& tran_cat, transport_catalogue::RouteSettings&& route_settings);
 	std::optional<transport_catalogue::FoundedRoute> FindRoute(std::string_view stop_from, std::string_view stop_to) const;
+	
+	// for serialization
+	const transport_catalogue::RouteSettings& GetRouteSettings() const;
+	const graph::DirectedWeightedGraph<Item>& GetGraph() const;
+	const graph::Router<Item>& GetRouter() const;
+	const std::map<std::string, VertexId>& GetStopnameToVertex() const;
 private:
 	transport_catalogue::RouteSettings route_settings_;
 	std::unique_ptr<graph::DirectedWeightedGraph<Item>> graph_;
 	std::unique_ptr<graph::Router<Item>> router_ptr_;
-	std::map<std::string_view, VertexId> valid_stopname_to_vertex_;
+	std::map<std::string, VertexId> valid_stopname_to_vertex_;
 
 	void BuildValidStopsVertex(const std::unordered_map<std::string_view, const transport_catalogue::Stop*>& stopname_to_stop);
 	template <typename Iterator>

@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+import "graph.proto";
+
+package transport_router_serialize;
+
+message RouteSettings {
+	double bus_velocity = 1;
+	double bus_wait_time = 2;
+}
+
+message EdgeId {
+	int64 value = 1;
+}
+
+message RouteInternalData {
+	graph_serialize.Item weight = 1;
+	EdgeId prev_edge = 2;
+}
+
+message VectorInternalData {
+	repeated RouteInternalData values = 1;
+}
+
+message Router {
+	repeated VectorInternalData RoutesInternalData = 1;
+}
+
+message StopnameToVertex {
+	bytes stopname = 1;
+	int64 vertex = 2;
+}
+
+message TransportRouter {
+	RouteSettings route_settings = 1;
+	graph_serialize.Graph graph = 2;
+	Router router = 3;
+	repeated StopnameToVertex stopnames_to_vertex = 4;
+}

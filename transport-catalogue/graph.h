@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <vector>
+#include <utility>
 
 namespace graph {
 
@@ -25,6 +26,11 @@ namespace graph {
 
     public:
         DirectedWeightedGraph() = default;
+        explicit DirectedWeightedGraph(std::vector<Edge<Weight>>&& edges, std::vector<IncidenceList>&& incidence_lists) 
+            : edges_(std::move(edges))
+            , incidence_lists_(std::move(incidence_lists))
+        {}
+
         explicit DirectedWeightedGraph(size_t vertex_count);
         EdgeId AddEdge(const Edge<Weight>& edge);
 
@@ -33,6 +39,13 @@ namespace graph {
         const Edge<Weight>& GetEdge(EdgeId edge_id) const;
         IncidentEdgesRange GetIncidentEdges(VertexId vertex) const;
 
+        // for serialization
+        const std::vector<Edge<Weight>>& GetEdges() const {
+            return edges_;
+        }
+        const std::vector<IncidenceList>& GetIncidenceLists() const {
+            return incidence_lists_;
+        }
     private:
         std::vector<Edge<Weight>> edges_;
         std::vector<IncidenceList> incidence_lists_;

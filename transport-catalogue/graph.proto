@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package graph_serialize;
+
+enum ActionType {
+	ACTION_TYPE_ITEM = 0;
+	ACTION_TYPE_WAIT = 1;
+	ACTION_TYPE_BUS = 2;
+}
+
+message Item {
+	double time = 1;
+	bytes name = 2;
+	ActionType type = 3;
+	int32 span_count = 4;
+}
+
+message Edge {
+	int64 from = 1;
+	int64 to = 2;
+	Item weight = 3;
+}
+
+message IncidenceList {
+	repeated int64 edge_id = 1;
+}
+
+message Graph {
+	repeated Edge edges = 1;
+	repeated IncidenceList incidence_lists = 2;
+}

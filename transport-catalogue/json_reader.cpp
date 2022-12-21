@@ -40,6 +40,9 @@ Color ParseColor(const Node& color_node) {
 }
 
 void Facade::InitialiseBaseRequests() {
+	if (!document_.GetRoot().AsDict().count("base_requests"s)) {
+		return;
+	}
 	const auto& base_requests = document_.GetRoot().AsDict().at("base_requests"s).AsArray();
 	std::vector<const Node*> bus_requests;
 	bus_requests.reserve(base_requests.size());
@@ -82,6 +85,9 @@ void Facade::InitialiseBaseRequests() {
 }
 
 void Facade::InitialiseRenderSettings() {
+	if (!document_.GetRoot().AsDict().count("render_settings"s)) {
+		return;
+	}
 	const auto& render_settings = document_.GetRoot().AsDict().at("render_settings"s).AsDict();
 	const auto& bus_offset = render_settings.at("bus_label_offset"s).AsArray();
 	const auto bus_label_offset = std::make_pair(bus_offset[0].AsDouble(), bus_offset[1].AsDouble());
@@ -106,11 +112,19 @@ void Facade::InitialiseRenderSettings() {
 }
 
 void Facade::InitializeTransportRouter() {
+	if (!document_.GetRoot().AsDict().count("routing_settings"s)) {
+		return;
+	}
 	const auto& routing_settings_doc = document_.GetRoot().AsDict().at("routing_settings"s).AsDict();
 	auto bus_velocity = routing_settings_doc.at("bus_velocity"s).AsDouble();
 	auto bus_wait_time = routing_settings_doc.at("bus_wait_time"s).AsDouble();
 	RouteSettings route_settings = { bus_velocity, bus_wait_time };
 	transport_router_ = transport_router::TransportRouter(tran_cat_, std::move(route_settings));
+}
+
+void Facade::InitializeSerializationSettings() {
+	const auto& serialization_settings = document_.GetRoot().AsDict().at("serialization_settings"s).AsDict();
+	serialization_file_ = serialization_settings.at("file"s).AsString();
 }
 
 Facade::Facade(std::istream& thread)  
@@ -119,6 +133,7 @@ Facade::Facade(std::istream& thread)
 	InitialiseBaseRequests();
 	InitialiseRenderSettings();
 	InitializeTransportRouter();
+	InitializeSerializationSettings();
 }
 
 json::Node Facade::HandleBusRequest(const json::Dict& request_as_map) const {
@@ -213,6 +228,22 @@ void Facade::AsnwerRequests(std::ostream& thread) {
 void Facade::RenderRoute(std::ostream& thread) {
 	map_render_.Render(tran_cat_);
 	map_render_.VisualiseRender(thread);
+}
+
+void Facade::Serialize() {
+	auto proto_tran_cat = serialization::Serializator::SerializeTransportCatalogue(tran_cat_);
+	auto proto_render_settings = serialization::Serializator::SerializeMapRender(map_render_.GetRenderSettings());
+	auto proto_tran_route = serialization::Serializator::SerializeTransportRouter(transport_router_);
+	serialization::Serializator::SerializeFacade(proto_tran_cat, proto_render_settings,
+		proto_tran_route, std::move(serialization_file_));
+}
+
+void Facade::Deserialize() {
+	std::unique_ptr<transport_catalogue_serialize::Facade> proto_facade(serialization::Serializator::DeserializeFacade(serialization_file_));
+	tran_cat_ = serialization::Serializator::DeserializeTransportCatalogue(proto_facade->tran_cat());
+	map_render_ = rendering::MapRenderer{ serialization::Serializator::DeserializeSerializeRenderSettings(proto_facade->render_settings()) };
+	transport_router_ = serialization::Serializator::DeserializeRouteSettings(proto_facade->tran_router(),
+		tran_cat_.GetStopnameToStop(), tran_cat_.GetBusnameToBus());
 }
 } //namespace handle_iformation
 } //namespace transport_catalogue

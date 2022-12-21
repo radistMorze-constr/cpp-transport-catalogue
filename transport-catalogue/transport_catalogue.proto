@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+import "map_renderer.proto";
+import "transport_router.proto";
+
+package transport_catalogue_serialize;
+
+enum TypeRoute {
+	TYPEROUTE_CIRCLE = 0;
+	TYPEROUTE_LINE = 1;
+}
+
+message Coordinates {
+	double lat = 1;
+	double lng = 2;
+}
+
+message Stop {
+    bytes name = 1;
+	Coordinates coordinates = 2;
+}
+
+message Bus {
+    bytes name = 1;
+	repeated bytes stops = 2;
+	TypeRoute type_route = 3;
+	repeated bytes unique_stops = 4;
+}
+
+message DistanceToStops {
+    bytes stop_from = 1;
+	bytes stop_to = 2;
+	double distance = 3;
+}
+
+message TransportCatalogue {
+    repeated Stop stops = 1;
+	repeated Bus busses = 2;
+	repeated DistanceToStops distance_to_stops = 3;
+}
+
+message Facade {
+	TransportCatalogue tran_cat = 1;
+	rendering_serialize.RenderSettings render_settings = 2;
+	transport_router_serialize.TransportRouter tran_router = 3;
+}

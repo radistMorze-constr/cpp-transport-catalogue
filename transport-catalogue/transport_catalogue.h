@@ -16,16 +16,17 @@ namespace transport_catalogue {
 using VertexId = size_t;
 
 namespace detail {
-class HashTransportCatalogue {
-public:
-	size_t operator()(std::pair<const Stop*, const Stop*> stops) const {
-		return stops.first->coordinates.lat * 37 + stops.first->coordinates.lng * 37*37 +
-			stops.second->coordinates.lat * 37*37*37 + stops.second->coordinates.lng * 37*37*37*37;
-	}
-};
+	class HashTransportCatalogue {
+	public:
+		size_t operator()(std::pair<const Stop*, const Stop*> stops) const {
+			return stops.first->coordinates.lat * 37 + stops.first->coordinates.lng * 37 * 37 +
+				stops.second->coordinates.lat * 37 * 37 * 37 + stops.second->coordinates.lng * 37 * 37 * 37 * 37;
+		}
+	};
 }
 
 class TransportCatalogue {
+	//friend class serialization::Serializator;
 public:
 	TransportCatalogue();
 
@@ -41,6 +42,11 @@ public:
 	const std::map<std::string_view, const Bus*>& GetBusnameToBus() const;
 	const std::unordered_map<std::string_view, const Stop*>& GetStopnameToStop() const;
 	const std::vector<const Stop*> GetValidStops() const;
+
+	// for serialization
+	const std::deque<Stop>& GetDequeStops() const;
+	const std::deque<Bus>& GetDequeBusses() const;
+	const std::unordered_map<std::pair<const Stop*, const Stop*>, double, detail::HashTransportCatalogue>& GetDistanceToStops() const;
 private:
 	std::deque<Stop> stops;
 	std::unordered_map<std::string_view, const Stop*> stopname_to_stop_;

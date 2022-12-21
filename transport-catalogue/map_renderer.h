@@ -29,6 +29,9 @@ public:
 	void Render(const TransportCatalogue& tran_cat);
 	void VisualiseRender(std::ostream& thread) const;
 
+	// for serialization
+	const RenderSettings& GetRenderSettings() const;
+
 protected:
 	void FillRenderPolylines(const std::unordered_map<const Stop*, svg::Point>& stop_to_coordinates, std::vector<std::pair<svg::Text, svg::Color>>& busnames_to_draw,
 		const std::map<std::string_view, const Bus*>& busname_to_bus);

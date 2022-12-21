@@ -134,4 +134,14 @@ const std::vector<const Stop*> TransportCatalogue::GetValidStops() const {
 const std::unordered_map<std::string_view, const Stop*>& TransportCatalogue::GetStopnameToStop() const {
 	return stopname_to_stop_;
 }
+
+const std::deque<Stop>& TransportCatalogue::GetDequeStops() const {
+	return stops;
+}
+const std::deque<Bus>& TransportCatalogue::GetDequeBusses() const {
+	return busses_;
+}
+const std::unordered_map<std::pair<const Stop*, const Stop*>, double, detail::HashTransportCatalogue>& TransportCatalogue::GetDistanceToStops() const {
+	return distance_stops_;
+}
 } //namespace transport_catalogue

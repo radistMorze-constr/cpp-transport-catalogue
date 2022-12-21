@@ -97,24 +97,6 @@ Polyline CreateRoute(const std::vector<const Stop*>& stops, const std::unordered
 
 MapRenderer::MapRenderer() = default;
 
-/*MapRenderer::MapRenderer(double width, double height, double padding, double line_width, double stop_radius, size_t bus_label_font_size,
-	std::pair<double, double> bus_label_offset, size_t stop_label_font_size, std::pair<double, double> stop_label_offset,
-	Color underlayer_color, double underlayer_width, std::vector<Color> color_palette) 
-	: width(width),
-	height(height),
-	padding(padding),
-	line_width(line_width),
-	stop_radius(stop_radius),
-	bus_label_font_size(bus_label_font_size),
-	bus_label_offset(bus_label_offset),
-	stop_label_font_size(stop_label_font_size),
-	stop_label_offset(stop_label_offset),
-	underlayer_color(underlayer_color),
-	underlayer_width(underlayer_width),
-	color_palette(color_palette)
-{
-}*/
-
 MapRenderer::MapRenderer(RenderSettings&& render_settings)
 	: render_settings_(std::move(render_settings))
 {
@@ -203,6 +185,10 @@ void MapRenderer::Render(const TransportCatalogue& tran_cat) {
 
 void MapRenderer::VisualiseRender(std::ostream& thread) const {
     render_doc_.Render(thread);
+}
+
+const RenderSettings& MapRenderer::GetRenderSettings() const {
+    return render_settings_;
 }
 } //namespace rendering
 } //namespace transport_catalogue
