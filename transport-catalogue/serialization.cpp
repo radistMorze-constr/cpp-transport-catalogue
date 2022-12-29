@@ -8,7 +8,7 @@
 using namespace transport_catalogue;
 
 namespace serialization {
-transport_catalogue_serialize::TransportCatalogue* Serializator::SerializeTransportCatalogue(const transport_catalogue::TransportCatalogue& tran_cat) {
+transport_catalogue_serialize::TransportCatalogue* SerializeTransportCatalogue(const transport_catalogue::TransportCatalogue& tran_cat) {
 	auto proto_tran_cat = new transport_catalogue_serialize::TransportCatalogue;
 	const auto& tran_cat_stops = tran_cat.GetDequeStops();
 	for (const auto& stop : tran_cat_stops) {
@@ -67,7 +67,7 @@ void SetProtoColor(const svg::Color& color, svg_serialize::Color* proto_color) {
 	}
 }
 
-rendering_serialize::RenderSettings* Serializator::SerializeMapRender(const transport_catalogue::rendering::RenderSettings& render_settings) {
+rendering_serialize::RenderSettings* SerializeMapRender(const transport_catalogue::rendering::RenderSettings& render_settings) {
 	auto proto_render_settings = new rendering_serialize::RenderSettings;
 
 	proto_render_settings->set_width(render_settings.width);
@@ -117,7 +117,7 @@ void SetProtoItem(graph_serialize::Item* proto_item, const transport_catalogue::
 	}
 }
 
-transport_router_serialize::TransportRouter* Serializator::SerializeTransportRouter(const transport_router::TransportRouter& tran_router) {
+transport_router_serialize::TransportRouter* SerializeTransportRouter(const transport_router::TransportRouter& tran_router) {
 	auto proto_tran_router = new transport_router_serialize::TransportRouter;
 	{ //RouteSettings
 		auto proto_route_settings = new transport_router_serialize::RouteSettings;
@@ -185,7 +185,7 @@ transport_router_serialize::TransportRouter* Serializator::SerializeTransportRou
 	return proto_tran_router;
 }
 
-void Serializator::SerializeFacade(transport_catalogue_serialize::TransportCatalogue* proto_tran_cat,
+void SerializeFacade(transport_catalogue_serialize::TransportCatalogue* proto_tran_cat,
 	rendering_serialize::RenderSettings* proto_render_settings,
 	transport_router_serialize::TransportRouter* proto_tran_router,
 	std::string filename) {
@@ -197,7 +197,7 @@ void Serializator::SerializeFacade(transport_catalogue_serialize::TransportCatal
 	proto_facade.SerializeToOstream(&out_file);
 }
 
-transport_catalogue::TransportCatalogue Serializator::DeserializeTransportCatalogue(const transport_catalogue_serialize::TransportCatalogue& proto_tran_cat) {
+transport_catalogue::TransportCatalogue DeserializeTransportCatalogue(const transport_catalogue_serialize::TransportCatalogue& proto_tran_cat) {
 	transport_catalogue::TransportCatalogue tran_cat{};
 	for (int i = 0; i < proto_tran_cat.stops_size(); ++i) {
 		const auto& proto_stop = proto_tran_cat.stops(i);
@@ -241,7 +241,7 @@ svg::Color MakeColor(const svg_serialize::Color& proto_color) {
 	return color;
 }
 
-transport_catalogue::rendering::RenderSettings Serializator::DeserializeSerializeRenderSettings(const rendering_serialize::RenderSettings proto_render_settings) {
+transport_catalogue::rendering::RenderSettings DeserializeSerializeRenderSettings(const rendering_serialize::RenderSettings proto_render_settings) {
 	transport_catalogue::rendering::RenderSettings render_settings{};
 	render_settings.width = proto_render_settings.width();
 	render_settings.height = proto_render_settings.height();
@@ -288,7 +288,7 @@ transport_catalogue::Item MakeItem(const graph_serialize::Item& proto_item,
 	return item;
 }
 
-transport_router::TransportRouter Serializator::DeserializeRouteSettings(const transport_router_serialize::TransportRouter& proto_tran_router,
+transport_router::TransportRouter DeserializeRouteSettings(const transport_router_serialize::TransportRouter& proto_tran_router,
 	const std::unordered_map<std::string_view, const Stop*>& stopname_to_stop,
 	const std::map<std::string_view, const Bus*>& busname_to_bus) {
 	// RouteSettings
@@ -347,7 +347,7 @@ transport_router::TransportRouter Serializator::DeserializeRouteSettings(const t
 	return transport_router;
 }
 
-transport_catalogue_serialize::Facade* Serializator::DeserializeFacade(std::string filename) {
+transport_catalogue_serialize::Facade* DeserializeFacade(std::string filename) {
 	std::ifstream in_file(filename, std::ios::binary);
 	auto proto_facade = new transport_catalogue_serialize::Facade;
 	if (!proto_facade->ParseFromIstream(&in_file)) {

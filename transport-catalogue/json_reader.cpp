@@ -230,19 +230,23 @@ void Facade::RenderRoute(std::ostream& thread) {
 	map_render_.VisualiseRender(thread);
 }
 
+/*
+	For reviewer Yuriy Timofeev
+	I wrote in pachka why didn't change the remark for now
+*/
 void Facade::Serialize() {
-	auto proto_tran_cat = serialization::Serializator::SerializeTransportCatalogue(tran_cat_);
-	auto proto_render_settings = serialization::Serializator::SerializeMapRender(map_render_.GetRenderSettings());
-	auto proto_tran_route = serialization::Serializator::SerializeTransportRouter(transport_router_);
-	serialization::Serializator::SerializeFacade(proto_tran_cat, proto_render_settings,
+	auto proto_tran_cat = serialization::SerializeTransportCatalogue(tran_cat_);
+	auto proto_render_settings = serialization::SerializeMapRender(map_render_.GetRenderSettings());
+	auto proto_tran_route = serialization::SerializeTransportRouter(transport_router_);
+	serialization::SerializeFacade(proto_tran_cat, proto_render_settings,
 		proto_tran_route, std::move(serialization_file_));
 }
 
 void Facade::Deserialize() {
-	std::unique_ptr<transport_catalogue_serialize::Facade> proto_facade(serialization::Serializator::DeserializeFacade(serialization_file_));
-	tran_cat_ = serialization::Serializator::DeserializeTransportCatalogue(proto_facade->tran_cat());
-	map_render_ = rendering::MapRenderer{ serialization::Serializator::DeserializeSerializeRenderSettings(proto_facade->render_settings()) };
-	transport_router_ = serialization::Serializator::DeserializeRouteSettings(proto_facade->tran_router(),
+	std::unique_ptr<transport_catalogue_serialize::Facade> proto_facade(serialization::DeserializeFacade(serialization_file_));
+	tran_cat_ = serialization::DeserializeTransportCatalogue(proto_facade->tran_cat());
+	map_render_ = rendering::MapRenderer{ serialization::DeserializeSerializeRenderSettings(proto_facade->render_settings()) };
+	transport_router_ = serialization::DeserializeRouteSettings(proto_facade->tran_router(),
 		tran_cat_.GetStopnameToStop(), tran_cat_.GetBusnameToBus());
 }
 } //namespace handle_iformation

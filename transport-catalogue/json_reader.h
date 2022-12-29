@@ -11,6 +11,10 @@
 namespace transport_catalogue {
 namespace handle_iformation {
 
+	/*
+	For reviewer Yuriy Timofeev
+	I wrote in pachka why didn't change the remark for now
+*/
 class Facade {
 public:
 	explicit Facade(std::istream& thread);
@@ -19,7 +23,8 @@ public:
 	void RenderRoute(std::ostream& thread);
 	void Serialize();	
 	void Deserialize();
-protected: // Ќадо сделать private, наследовани€ же нет, не отличаетс€ от private
+
+private:
 	void InitialiseBaseRequests();
 	void InitialiseRenderSettings();
 	void InitializeTransportRouter();
@@ -35,6 +40,5 @@ private:
 	transport_router::TransportRouter transport_router_;
 	std::string serialization_file_;
 };
-
 } //namespace handle_iformation
 } //namespace transport_catalogue
