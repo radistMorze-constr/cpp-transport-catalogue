@@ -17,9 +17,9 @@ transport_router::TransportRouter DeserializeRouteSettings(const transport_route
 	const std::unordered_map<std::string_view, const transport_catalogue::Stop*>& stopname_to_stop,
 	const std::map<std::string_view, const transport_catalogue::Bus*>& busname_to_bus);
 
-void SerializeFacade(transport_catalogue_serialize::TransportCatalogue* proto_tran_cat,
-	rendering_serialize::RenderSettings* proto_render_settings,
-	transport_router_serialize::TransportRouter* proto_tran_router,
-	std::string filename);
+void SerializeFacade(const transport_catalogue::TransportCatalogue& tran_cat,
+	const transport_catalogue::rendering::MapRenderer& map_render,
+	const transport_router::TransportRouter& transport_router,
+	const std::string& filename);
 transport_catalogue_serialize::Facade* DeserializeFacade(std::string filename);
 } //serialization

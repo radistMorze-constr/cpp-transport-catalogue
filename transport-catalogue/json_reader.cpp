@@ -39,10 +39,8 @@ Color ParseColor(const Node& color_node) {
 	return color;
 }
 
-void Facade::InitialiseBaseRequests() {
-	if (!document_.GetRoot().AsDict().count("base_requests"s)) {
-		return;
-	}
+TransportCatalogue Facade::MakeTransportCatalogue() const {
+	TransportCatalogue tran_cat;
 	const auto& base_requests = document_.GetRoot().AsDict().at("base_requests"s).AsArray();
 	std::vector<const Node*> bus_requests;
 	bus_requests.reserve(base_requests.size());
@@ -53,8 +51,8 @@ void Facade::InitialiseBaseRequests() {
 			const auto& name = request_as_map.at("name"s).AsString();
 			const auto lat = request_as_map.at("latitude"s).AsDouble();
 			const auto lng = request_as_map.at("longitude"s).AsDouble();
-			tran_cat_.AddStop({ std::move(name), {lat, lng} });
-			stop_to_lengths_to_stops[tran_cat_.FindStop(name)] = request_as_map.at("road_distances"s).AsDict();
+			tran_cat.AddStop({ std::move(name), {lat, lng} });
+			stop_to_lengths_to_stops[tran_cat.FindStop(name)] = request_as_map.at("road_distances"s).AsDict();
 		}
 		else if (request_as_map.at("type"s).AsString() == "Bus"s) {
 			bus_requests.push_back(&request);
@@ -66,7 +64,7 @@ void Facade::InitialiseBaseRequests() {
 
 	for (const auto& [stop_from, stop_length] : stop_to_lengths_to_stops) {
 		for (const auto& [stop_to, length] : stop_length) {
-			tran_cat_.SetLengthInStops(stop_from, tran_cat_.FindStop(stop_to), length.AsDouble());
+			tran_cat.SetLengthInStops(stop_from, tran_cat.FindStop(stop_to), length.AsDouble());
 		}
 	}
 
@@ -76,18 +74,16 @@ void Facade::InitialiseBaseRequests() {
 		std::vector<const Stop*> stops;
 		std::unordered_set<std::string_view> unique_stops;
 		for (const auto& stopname : request_as_map.at("stops"s).AsArray()) {
-			stops.push_back(tran_cat_.FindStop(stopname.AsString()));
+			stops.push_back(tran_cat.FindStop(stopname.AsString()));
 			unique_stops.insert(stops.back()->name);
 		}
 		auto type_route = request_as_map.at("is_roundtrip"s).AsBool() ? TypeRoute::circle : TypeRoute::line;
-		tran_cat_.AddBus({ std::move(busname), std::move(stops), std::move(type_route), std::move(unique_stops) });
+		tran_cat.AddBus({ std::move(busname), std::move(stops), std::move(type_route), std::move(unique_stops) });
 	}
+	return tran_cat;
 }
 
-void Facade::InitialiseRenderSettings() {
-	if (!document_.GetRoot().AsDict().count("render_settings"s)) {
-		return;
-	}
+rendering::MapRenderer Facade::MakeMapRenderer() const {
 	const auto& render_settings = document_.GetRoot().AsDict().at("render_settings"s).AsDict();
 	const auto& bus_offset = render_settings.at("bus_label_offset"s).AsArray();
 	const auto bus_label_offset = std::make_pair(bus_offset[0].AsDouble(), bus_offset[1].AsDouble());
@@ -108,18 +104,15 @@ void Facade::InitialiseRenderSettings() {
 		bus_label_offset, render_settings.at("stop_label_font_size"s).AsInt(),
 		stop_label_offset, underlayer_color,
 		render_settings.at("underlayer_width"s).AsDouble(), color_palette };
-	map_render_ = rendering::MapRenderer(std::move(settings));
+	return rendering::MapRenderer(std::move(settings));
 }
 
-void Facade::InitializeTransportRouter() {
-	if (!document_.GetRoot().AsDict().count("routing_settings"s)) {
-		return;
-	}
+transport_router::TransportRouter Facade::MakeTransportRouter(const TransportCatalogue& tran_cat) const {
 	const auto& routing_settings_doc = document_.GetRoot().AsDict().at("routing_settings"s).AsDict();
 	auto bus_velocity = routing_settings_doc.at("bus_velocity"s).AsDouble();
 	auto bus_wait_time = routing_settings_doc.at("bus_wait_time"s).AsDouble();
 	RouteSettings route_settings = { bus_velocity, bus_wait_time };
-	transport_router_ = transport_router::TransportRouter(tran_cat_, std::move(route_settings));
+	return transport_router::TransportRouter(tran_cat, std::move(route_settings));
 }
 
 void Facade::InitializeSerializationSettings() {
@@ -130,14 +123,11 @@ void Facade::InitializeSerializationSettings() {
 Facade::Facade(std::istream& thread)  
 	: document_(Load(thread)) 
 {
-	InitialiseBaseRequests();
-	InitialiseRenderSettings();
-	InitializeTransportRouter();
 	InitializeSerializationSettings();
 }
 
 json::Node Facade::HandleBusRequest(const json::Dict& request_as_map) const {
-	auto bus_info = tran_cat_.GetInfromBus(request_as_map.at("name"s).AsString());
+	auto bus_info = p_tran_cat_->GetInfromBus(request_as_map.at("name"s).AsString());
 	Node node;
 	if (!bus_info) {
 		return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value("not found"s).EndDict().Build();
@@ -155,7 +145,7 @@ json::Node Facade::HandleBusRequest(const json::Dict& request_as_map) const {
 json::Node Facade::HandleStopRequest(const json::Dict& request_as_map) const {
 	Node node;
 	try {
-		auto busses = tran_cat_.GetListBusses(request_as_map.at("name"s).AsString());
+		auto busses = p_tran_cat_->GetListBusses(request_as_map.at("name"s).AsString());
 		Array names;
 		names.reserve(busses.size());
 		for (const auto& sv : busses) {
@@ -177,7 +167,7 @@ json::Node Facade::HandleMapRequest(const json::Dict& request_as_map) {
 json::Node Facade::HandleRouteRequest(const json::Dict& request_as_map) const {
 	auto& stop_from = request_as_map.at("from"s).AsString();
 	auto& stop_to = request_as_map.at("to"s).AsString();
-	const auto& founded_route = transport_router_.FindRoute(stop_from, stop_to);
+	const auto& founded_route = p_transport_router_->FindRoute(stop_from, stop_to);
 	if (!founded_route) {
 		return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("error_message"s).Value("not found"s).EndDict().Build();
 	}
@@ -226,28 +216,27 @@ void Facade::AsnwerRequests(std::ostream& thread) {
 }
 
 void Facade::RenderRoute(std::ostream& thread) {
-	map_render_.Render(tran_cat_);
-	map_render_.VisualiseRender(thread);
+	p_map_render_->Render(*p_tran_cat_);
+	p_map_render_->VisualiseRender(thread);
 }
 
-/*
-	For reviewer Yuriy Timofeev
-	I wrote in pachka why didn't change the remark for now
-*/
-void Facade::Serialize() {
-	auto proto_tran_cat = serialization::SerializeTransportCatalogue(tran_cat_);
-	auto proto_render_settings = serialization::SerializeMapRender(map_render_.GetRenderSettings());
-	auto proto_tran_route = serialization::SerializeTransportRouter(transport_router_);
-	serialization::SerializeFacade(proto_tran_cat, proto_render_settings,
-		proto_tran_route, std::move(serialization_file_));
+Facade& Facade::SetTransportCatalogue(TransportCatalogue* tran_cat) {
+	p_tran_cat_ = tran_cat;
+	return *this;
 }
 
-void Facade::Deserialize() {
-	std::unique_ptr<transport_catalogue_serialize::Facade> proto_facade(serialization::DeserializeFacade(serialization_file_));
-	tran_cat_ = serialization::DeserializeTransportCatalogue(proto_facade->tran_cat());
-	map_render_ = rendering::MapRenderer{ serialization::DeserializeSerializeRenderSettings(proto_facade->render_settings()) };
-	transport_router_ = serialization::DeserializeRouteSettings(proto_facade->tran_router(),
-		tran_cat_.GetStopnameToStop(), tran_cat_.GetBusnameToBus());
+Facade& Facade::SetMapRenderer(rendering::MapRenderer* map_render) {
+	p_map_render_ = map_render;
+	return *this;
+}
+
+Facade& Facade::SetTransportRouter(transport_router::TransportRouter* transport_router) {
+	p_transport_router_ = transport_router;
+	return *this;
+}
+
+std::string Facade::GetSerializationFile() const {
+	return serialization_file_;
 }
 } //namespace handle_iformation
 } //namespace transport_catalogue

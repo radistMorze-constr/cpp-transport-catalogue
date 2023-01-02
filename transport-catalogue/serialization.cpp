@@ -185,11 +185,15 @@ transport_router_serialize::TransportRouter* SerializeTransportRouter(const tran
 	return proto_tran_router;
 }
 
-void SerializeFacade(transport_catalogue_serialize::TransportCatalogue* proto_tran_cat,
-	rendering_serialize::RenderSettings* proto_render_settings,
-	transport_router_serialize::TransportRouter* proto_tran_router,
-	std::string filename) {
+void SerializeFacade(const TransportCatalogue& tran_cat,
+	const rendering::MapRenderer& map_render,
+	const transport_router::TransportRouter& transport_router,
+	const std::string& filename) {
 	std::ofstream out_file(filename, std::ios::binary);
+	auto proto_tran_cat = serialization::SerializeTransportCatalogue(tran_cat);
+	auto proto_render_settings = serialization::SerializeMapRender(map_render.GetRenderSettings());
+	auto proto_tran_router = serialization::SerializeTransportRouter(transport_router);
+
 	transport_catalogue_serialize::Facade proto_facade;
 	proto_facade.set_allocated_tran_cat(proto_tran_cat);
 	proto_facade.set_allocated_render_settings(proto_render_settings);

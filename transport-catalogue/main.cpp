@@ -36,11 +36,19 @@ int main(int argc, char* argv[]) {
 
     if (mode == "make_base"sv) {
         Facade facade(stream_input);
-        facade.Serialize();
+        TransportCatalogue tran_cat = facade.MakeTransportCatalogue();
+        rendering::MapRenderer map_render = facade.MakeMapRenderer();
+        transport_router::TransportRouter trant_router = facade.MakeTransportRouter(tran_cat);
+        serialization::SerializeFacade(tran_cat, map_render, trant_router, facade.GetSerializationFile());
     }
     else if (mode == "process_requests"sv) {
         Facade facade(stream_input);
-        facade.Deserialize();
+        std::unique_ptr<transport_catalogue_serialize::Facade> proto_facade(serialization::DeserializeFacade(facade.GetSerializationFile()));
+        auto tran_cat = serialization::DeserializeTransportCatalogue(proto_facade->tran_cat());
+        auto map_render = rendering::MapRenderer{ serialization::DeserializeSerializeRenderSettings(proto_facade->render_settings()) };
+        auto transport_router = serialization::DeserializeRouteSettings(proto_facade->tran_router(),
+            tran_cat.GetStopnameToStop(), tran_cat.GetBusnameToBus());
+        facade.SetTransportCatalogue(&tran_cat).SetMapRenderer(&map_render).SetTransportRouter(&transport_router);
         facade.AsnwerRequests(stream_output);
     }
     else {
