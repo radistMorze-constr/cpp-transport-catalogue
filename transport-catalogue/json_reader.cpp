@@ -14,6 +14,26 @@ using namespace json;
 using namespace graph;
 using namespace transport_router;
 
+DataDocument::DataDocument(std::istream& thread)
+	: document_(Load(thread)) 
+{
+}
+
+DataDocument DataDocument::MakeDataDocument(std::istream& thread) {
+	DataDocument result(thread);
+	return result;
+}
+
+const json::Document& DataDocument::GetDocument() const {
+	return document_;
+}
+
+std::string DataDocument::GetSerializationFile() const {
+	const auto& serialization_settings = document_.GetRoot().AsDict().at("serialization_settings"s).AsDict();
+	auto serialization_file = serialization_settings.at("file"s).AsString();
+	return serialization_file;
+}
+
 Color ParseColor(const Node& color_node) {
 	Color color;
 	if (color_node.IsArray()) {
@@ -39,7 +59,7 @@ Color ParseColor(const Node& color_node) {
 	return color;
 }
 
-TransportCatalogue Facade::MakeTransportCatalogue() const {
+TransportCatalogue MakeBase::MakeTransportCatalogue() const {
 	TransportCatalogue tran_cat;
 	const auto& base_requests = document_.GetRoot().AsDict().at("base_requests"s).AsArray();
 	std::vector<const Node*> bus_requests;
@@ -83,7 +103,7 @@ TransportCatalogue Facade::MakeTransportCatalogue() const {
 	return tran_cat;
 }
 
-rendering::MapRenderer Facade::MakeMapRenderer() const {
+rendering::MapRenderer MakeBase::MakeMapRenderer() const {
 	const auto& render_settings = document_.GetRoot().AsDict().at("render_settings"s).AsDict();
 	const auto& bus_offset = render_settings.at("bus_label_offset"s).AsArray();
 	const auto bus_label_offset = std::make_pair(bus_offset[0].AsDouble(), bus_offset[1].AsDouble());
@@ -107,7 +127,7 @@ rendering::MapRenderer Facade::MakeMapRenderer() const {
 	return rendering::MapRenderer(std::move(settings));
 }
 
-transport_router::TransportRouter Facade::MakeTransportRouter(const TransportCatalogue& tran_cat) const {
+transport_router::TransportRouter MakeBase::MakeTransportRouter(const TransportCatalogue& tran_cat) const {
 	const auto& routing_settings_doc = document_.GetRoot().AsDict().at("routing_settings"s).AsDict();
 	auto bus_velocity = routing_settings_doc.at("bus_velocity"s).AsDouble();
 	auto bus_wait_time = routing_settings_doc.at("bus_wait_time"s).AsDouble();
@@ -115,18 +135,23 @@ transport_router::TransportRouter Facade::MakeTransportRouter(const TransportCat
 	return transport_router::TransportRouter(tran_cat, std::move(route_settings));
 }
 
-void Facade::InitializeSerializationSettings() {
-	const auto& serialization_settings = document_.GetRoot().AsDict().at("serialization_settings"s).AsDict();
-	serialization_file_ = serialization_settings.at("file"s).AsString();
-}
-
-Facade::Facade(std::istream& thread)  
-	: document_(Load(thread)) 
+MakeBase::MakeBase(const json::Document& document)
+	: document_(document) 
 {
-	InitializeSerializationSettings();
 }
 
-json::Node Facade::HandleBusRequest(const json::Dict& request_as_map) const {
+ProcessRequests::ProcessRequests(const json::Document& document
+	, TransportCatalogue* tran_cat
+	, rendering::MapRenderer* map_render
+	, transport_router::TransportRouter* transport_router) 
+	: document_(document)
+	, p_tran_cat_(tran_cat)
+	, p_map_render_(map_render)
+	, p_transport_router_(transport_router)
+{
+}
+
+json::Node ProcessRequests::HandleBusRequest(const json::Dict& request_as_map) const {
 	auto bus_info = p_tran_cat_->GetInfromBus(request_as_map.at("name"s).AsString());
 	Node node;
 	if (!bus_info) {
@@ -142,7 +167,7 @@ json::Node Facade::HandleBusRequest(const json::Dict& request_as_map) const {
 	}
 }
 
-json::Node Facade::HandleStopRequest(const json::Dict& request_as_map) const {
+json::Node ProcessRequests::HandleStopRequest(const json::Dict& request_as_map) const {
 	Node node;
 	try {
 		auto busses = p_tran_cat_->GetListBusses(request_as_map.at("name"s).AsString());
@@ -158,13 +183,13 @@ json::Node Facade::HandleStopRequest(const json::Dict& request_as_map) const {
 	}
 }
 
-json::Node Facade::HandleMapRequest(const json::Dict& request_as_map) {
+json::Node ProcessRequests::HandleMapRequest(const json::Dict& request_as_map) {
 	std::ostringstream render;
 	RenderRoute(render);
 	return Builder{}.StartDict().Key("request_id"s).Value(request_as_map.at("id"s).AsInt()).Key("map"s).Value(render.str()).EndDict().Build();
 }
 
-json::Node Facade::HandleRouteRequest(const json::Dict& request_as_map) const {
+json::Node ProcessRequests::HandleRouteRequest(const json::Dict& request_as_map) const {
 	auto& stop_from = request_as_map.at("from"s).AsString();
 	auto& stop_to = request_as_map.at("to"s).AsString();
 	const auto& founded_route = p_transport_router_->FindRoute(stop_from, stop_to);
@@ -188,7 +213,7 @@ json::Node Facade::HandleRouteRequest(const json::Dict& request_as_map) const {
 	}
 }
 
-void Facade::AsnwerRequests(std::ostream& thread) {
+void ProcessRequests::AsnwerRequests(std::ostream& thread) {
 	const auto& stat_requests = document_.GetRoot().AsDict().at("stat_requests"s).AsArray();
 	Builder builder = Builder{};
 	auto result = builder.StartArray();
@@ -215,28 +240,9 @@ void Facade::AsnwerRequests(std::ostream& thread) {
 	json::Print(json::Document(result.EndArray().Build()), thread);
 }
 
-void Facade::RenderRoute(std::ostream& thread) {
+void ProcessRequests::RenderRoute(std::ostream& thread) {
 	p_map_render_->Render(*p_tran_cat_);
 	p_map_render_->VisualiseRender(thread);
-}
-
-Facade& Facade::SetTransportCatalogue(TransportCatalogue* tran_cat) {
-	p_tran_cat_ = tran_cat;
-	return *this;
-}
-
-Facade& Facade::SetMapRenderer(rendering::MapRenderer* map_render) {
-	p_map_render_ = map_render;
-	return *this;
-}
-
-Facade& Facade::SetTransportRouter(transport_router::TransportRouter* transport_router) {
-	p_transport_router_ = transport_router;
-	return *this;
-}
-
-std::string Facade::GetSerializationFile() const {
-	return serialization_file_;
 }
 } //namespace handle_iformation
 } //namespace transport_catalogue

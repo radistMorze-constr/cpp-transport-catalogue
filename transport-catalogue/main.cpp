@@ -1,5 +1,4 @@
-﻿#include "transport_catalogue.h"
-#include "json_reader.h"
+﻿#include "json_reader.h"
 #include "serialization.h"
 //#include "tests.h"
 
@@ -35,20 +34,25 @@ int main(int argc, char* argv[]) {
     const std::string_view mode(argv[1]);
 
     if (mode == "make_base"sv) {
-        Facade facade(stream_input);
+        auto data_doc = DataDocument::MakeDataDocument(stream_input);
+        MakeBase facade(data_doc.GetDocument());
         TransportCatalogue tran_cat = facade.MakeTransportCatalogue();
         rendering::MapRenderer map_render = facade.MakeMapRenderer();
         transport_router::TransportRouter trant_router = facade.MakeTransportRouter(tran_cat);
-        serialization::SerializeFacade(tran_cat, map_render, trant_router, facade.GetSerializationFile());
+        serialization::SerializeFacade(tran_cat, map_render, trant_router, data_doc.GetSerializationFile());
     }
     else if (mode == "process_requests"sv) {
-        Facade facade(stream_input);
-        std::unique_ptr<transport_catalogue_serialize::Facade> proto_facade(serialization::DeserializeFacade(facade.GetSerializationFile()));
+        auto data_doc = DataDocument::MakeDataDocument(stream_input);
+        std::unique_ptr<transport_catalogue_serialize::Facade> proto_facade(serialization::DeserializeFacade(data_doc.GetSerializationFile()));
         auto tran_cat = serialization::DeserializeTransportCatalogue(proto_facade->tran_cat());
         auto map_render = rendering::MapRenderer{ serialization::DeserializeSerializeRenderSettings(proto_facade->render_settings()) };
         auto transport_router = serialization::DeserializeRouteSettings(proto_facade->tran_router(),
             tran_cat.GetStopnameToStop(), tran_cat.GetBusnameToBus());
-        facade.SetTransportCatalogue(&tran_cat).SetMapRenderer(&map_render).SetTransportRouter(&transport_router);
+        ProcessRequests facade(data_doc.GetDocument()
+            , &tran_cat
+            , &map_render
+            , &transport_router);
+        //facade.SetTransportCatalogue(&tran_cat).SetMapRenderer(&map_render).SetTransportRouter(&transport_router);
         facade.AsnwerRequests(stream_output);
     }
     else {
